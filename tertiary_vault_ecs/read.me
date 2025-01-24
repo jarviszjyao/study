@@ -1,0 +1,10 @@
+terraform/
+├── main.tf          # 主文件，调用模块
+├── variables.tf     # 主文件变量定义
+├── terraform.tfvars # 变量值
+├── modules/
+│   ├── ecs_eventbridge_rds/
+│   │   ├── main.tf
+│   │   ├── variables.tf
+│   │   ├── outputs.tf
+│   │   ├── task_definition.json

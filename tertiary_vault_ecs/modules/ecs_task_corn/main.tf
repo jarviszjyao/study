@@ -60,7 +60,6 @@ resource "aws_iam_role_policy" "ecs_task_rds_s3_policy" {
   policy = jsonencode({
     Version = "2012-10-17",
     Statement = [
-      # RDS IAM Authentication
       {
         Effect = "Allow",
         Action = [
@@ -68,7 +67,6 @@ resource "aws_iam_role_policy" "ecs_task_rds_s3_policy" {
         ],
         Resource = var.rds_resource_arn
       },
-      # S3 Write Access
       {
         Effect = "Allow",
         Action = [
@@ -96,8 +94,10 @@ resource "aws_ecs_task_definition" "ecs_task" {
     task_name    = var.task_name
     rds_endpoint = var.rds_endpoint
     rds_database = var.rds_database
-    s3_bucket    = var.s3_bucket_arn
+    s3_bucket    = var.s3_bucket
     region       = var.region
+    execution_role_arn = aws_iam_role.ecs_task_execution_role.arn
+    task_role_arn      = aws_iam_role.ecs_task_role.arn
   })
 }
 
