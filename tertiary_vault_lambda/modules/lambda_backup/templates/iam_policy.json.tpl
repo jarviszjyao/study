@@ -11,6 +11,11 @@
       "Effect": "Allow"
     },
     {
+      "Action": "rds-db:connect",
+      "Resource": "${rds_db_resource_arn}",
+      "Effect": "Allow"
+    },
+    {
       "Action": [
         "s3:PutObject",
         "s3:GetObject",
@@ -24,24 +29,19 @@
     },
     {
       "Action": [
-        "kms:Decrypt",
         "kms:Encrypt",
+        "kms:Decrypt",
         "kms:GenerateDataKey*"
       ],
-      "Resource": [
-        "${rds_kms_key_arn}",
-        "${s3_kms_key_arn}"
+      "Resource": "${s3_kms_arn}",
+      "Effect": "Allow"
+    },
+    {
+      "Action": [
+        "kms:Decrypt",
+        "kms:GenerateDataKey*"
       ],
-      "Effect": "Allow"
-    },
-    {
-      "Action": "rds:DescribeDBInstances",
-      "Resource": "*",
-      "Effect": "Allow"
-    },
-    {
-      "Action": "rds-db:connect",
-      "Resource": "${rds_db_resource_arn}",
+      "Resource": "${rds_kms_arn}",
       "Effect": "Allow"
     }
   ]

@@ -1,6 +1,7 @@
 aws_region           = "us-east-1"
 lambda_function_name = "rds_backup_lambda"
 image_uri            = "123456789012.dkr.ecr.us-east-1.amazonaws.com/my-backup-image:latest"
+ephemeral_storage_size = 1024
 
 vpc_config = {
   vpc_id             = "vpc-abcde123"
@@ -12,9 +13,9 @@ rds_config = {
   endpoint        = "rds-instance.abc123.us-east-1.rds.amazonaws.com"
   db_name         = "mydatabase"
   db_port         = 5432
-  iam_auth        = true
-  kms_key_arn     = "arn:aws:kms:us-east-1:123456789012:key/rds-key"
+  db_username     = "mydbuser"
   db_resource_arn = "arn:aws:rds-db:us-east-1:123456789012:dbuser:db-ABCDEFGHIJKLMNOP/mydbuser"
+  kms_key_arn     = "arn:aws:kms:us-east-1:123456789012:key/rds-key"
 }
 
 s3_config = {
@@ -23,21 +24,14 @@ s3_config = {
 }
 
 lambda_performance = {
-  architectures                 = ["arm64"]         # 使用 Graviton 架构
-  reserved_concurrent_executions = null              # 不设置预留并发，使用默认
-  tracing_mode                  = "Active"          # 开启 X-Ray 追踪
-}
-
-lambda_monitoring = {
-  error_alarm_enabled    = true
-  error_threshold        = 1
-  error_alarm_period     = 300
-  duration_alarm_enabled = true
-  duration_threshold     = 10000
-  duration_alarm_period  = 300
+  architectures                 = ["arm64"]   # 使用 Graviton 架构
+  reserved_concurrent_executions = null
+  tracing_mode                  = "Active"    # 开启 X-Ray 追踪
 }
 
 event_schedule = "rate(1 day)"
+function_timeout     = 900
+function_memory_size = 1024
 
 tags = {
   Environment = "production"

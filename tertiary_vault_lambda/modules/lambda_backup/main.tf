@@ -1,5 +1,5 @@
 ###############################
-# IAM Role 与策略配置
+# IAM Role 与内联策略（使用模板文件生成）
 ###############################
 
 resource "aws_iam_role" "lambda_role" {
@@ -21,15 +21,15 @@ resource "aws_iam_role_policy" "lambda_policy" {
   name = "${var.lambda_function_name}_policy"
   role = aws_iam_role.lambda_role.id
   policy = templatefile("${path.module}/iam_policy.json.tpl", {
-    s3_bucket           = var.s3_config.bucket_name,
-    rds_kms_key_arn     = var.rds_config.kms_key_arn,
-    s3_kms_key_arn      = var.s3_config.s3_kms_arn,
-    rds_db_resource_arn = var.rds_config.db_resource_arn
+    s3_bucket       = var.s3_config.bucket_name,
+    s3_kms_arn      = var.s3_config.s3_kms_arn,
+    rds_db_resource_arn = var.rds_config.db_resource_arn,
+    rds_kms_arn     = var.rds_config.kms_key_arn
   })
 }
 
 ###############################
-# Lambda 函数配置
+# Lambda Function 配置
 ###############################
 
 resource "aws_lambda_function" "this" {
@@ -40,27 +40,32 @@ resource "aws_lambda_function" "this" {
   timeout       = var.function_timeout
   memory_size   = var.function_memory_size
 
-  # 指定容器部署时所在的 VPC 配置
+  # 指定临时存储大小（/tmp）
+  ephemeral_storage {
+    size = var.ephemeral_storage_size
+  }
+
+  # VPC 部署
   vpc_config {
     subnet_ids         = var.vpc_config.subnet_ids
     security_group_ids = var.vpc_config.security_group_ids
   }
 
-  # 性能配置：支持指定架构（例如 "arm64" 用于 Graviton）、预留并发和追踪模式
+  # 性能相关设置：架构、预留并发、X-Ray 追踪
   architectures = var.lambda_performance.architectures
   reserved_concurrent_executions = var.lambda_performance.reserved_concurrent_executions
   tracing_config {
     mode = var.lambda_performance.tracing_mode
   }
 
+  # 环境变量传递 RDS 与 S3 的必要信息
   environment {
     variables = {
       RDS_ENDPOINT = var.rds_config.endpoint,
       RDS_DB_NAME  = var.rds_config.db_name,
       RDS_DB_PORT  = tostring(var.rds_config.db_port),
-      S3_BUCKET    = var.s3_config.bucket_name,
-      RDS_KMS_KEY  = var.rds_config.kms_key_arn,
-      S3_KMS_KEY   = var.s3_config.s3_kms_arn
+      DB_USERNAME  = var.rds_config.db_username,
+      S3_BUCKET    = var.s3_config.bucket_name
     }
   }
 
@@ -68,13 +73,13 @@ resource "aws_lambda_function" "this" {
 }
 
 ###############################
-# EventBridge 定时触发配置
+# EventBridge 定时触发配置（每天一次）
 ###############################
 
 resource "aws_cloudwatch_event_rule" "lambda_schedule" {
   name                = "${var.lambda_function_name}_schedule_rule"
   schedule_expression = var.event_schedule
-  description         = "定时触发 Lambda 执行 RDS 备份任务"
+  description         = "定时触发 Lambda 导出数据任务"
   tags                = var.tags
 }
 
@@ -90,40 +95,4 @@ resource "aws_lambda_permission" "allow_eventbridge" {
   function_name = aws_lambda_function.this.function_name
   principal     = "events.amazonaws.com"
   source_arn    = aws_cloudwatch_event_rule.lambda_schedule.arn
-}
-
-###############################
-# Lambda 监控报警（可选）
-###############################
-
-resource "aws_cloudwatch_metric_alarm" "lambda_error_alarm" {
-  count               = var.lambda_monitoring.error_alarm_enabled ? 1 : 0
-  alarm_name          = "${var.lambda_function_name}_error_alarm"
-  comparison_operator = "GreaterThanOrEqualToThreshold"
-  evaluation_periods  = 1
-  metric_name         = "Errors"
-  namespace           = "AWS/Lambda"
-  period              = var.lambda_monitoring.error_alarm_period
-  statistic           = "Sum"
-  threshold           = var.lambda_monitoring.error_threshold
-  alarm_description   = "当 Lambda 错误数量超过阈值时报警"
-  dimensions = {
-    FunctionName = aws_lambda_function.this.function_name
-  }
-}
-
-resource "aws_cloudwatch_metric_alarm" "lambda_duration_alarm" {
-  count               = var.lambda_monitoring.duration_alarm_enabled ? 1 : 0
-  alarm_name          = "${var.lambda_function_name}_duration_alarm"
-  comparison_operator = "GreaterThanOrEqualToThreshold"
-  evaluation_periods  = 1
-  metric_name         = "Duration"
-  namespace           = "AWS/Lambda"
-  period              = var.lambda_monitoring.duration_alarm_period
-  statistic           = "Average"
-  threshold           = var.lambda_monitoring.duration_threshold
-  alarm_description   = "当 Lambda 平均执行时长超过阈值时报警"
-  dimensions = {
-    FunctionName = aws_lambda_function.this.function_name
-  }
 }
