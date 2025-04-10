@@ -30,3 +30,21 @@ variable "destination_cidr_block" {
   type        = string
   default     = "0.0.0.0/0"
 }
+
+variable "additional_route_cidr_blocks" {
+  description = "Additional CIDR blocks to route through the NAT Gateway"
+  type        = list(string)
+  default     = []
+}
+
+variable "create_private_route_tables" {
+  description = "Whether to create new route tables for private subnets"
+  type        = bool
+  default     = true
+}
+
+variable "existing_private_route_table_ids" {
+  description = "List of existing private route table IDs (only used when create_private_route_tables is false)"
+  type        = list(string)
+  default     = []
+}
