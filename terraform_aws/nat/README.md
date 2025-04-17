@@ -158,6 +158,67 @@ terraform {
 }
 ```
 
+### S3 存储桶访问授权
+
+此配置支持多种 S3 访问授权方式：
+
+1. **默认凭证链**：代码不需要显式提供 AWS 访问密钥，而是利用 AWS 默认凭证提供链：
+   - AWS 环境变量 (`AWS_ACCESS_KEY_ID`/`AWS_SECRET_ACCESS_KEY`)
+   - 共享凭证文件 (`~/.aws/credentials`)
+   - EC2 实例配置文件
+   - IAM 角色
+   - Web 身份令牌
+
+2. **显式配置**：如需使用特定凭证，可以添加到 `terraform_backend.tfvars` 文件：
+   ```hcl
+   access_key    = "AKIAIOSFODNN7EXAMPLE"    # 可选，通常不推荐硬编码
+   secret_key    = "wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY"  # 可选，通常不推荐硬编码
+   ```
+
+3. **使用角色假设**：对于跨账户访问，可以使用 `role_arn` 参数：
+   ```hcl
+   role_arn      = "arn:aws:iam::123456789012:role/terraform-backend"
+   ```
+
+通常建议使用 IAM 角色或实例配置文件而不是硬编码访问密钥。
+
+### 使用初始化脚本
+
+为方便不同环境下的初始化，我们提供了初始化脚本：
+
+**Linux/macOS (Bash):**
+```bash
+./init.sh [选项]
+```
+
+选项:
+- `-e, --env ENV` - 使用特定环境配置文件 (如 dev, test, prod)
+- `-p, --profile PROFILE` - 使用特定 AWS 配置文件
+- `-r, --region REGION` - 覆盖默认 AWS 区域
+- `-h, --help` - 显示帮助信息
+
+**Windows (PowerShell):**
+```powershell
+.\init.ps1 [-env ENV] [-profile PROFILE] [-region REGION] [-help]
+```
+
+示例:
+```bash
+# 使用默认配置
+./init.sh
+
+# 使用生产环境配置
+./init.sh -e prod
+
+# 使用特定 AWS 配置文件
+./init.sh -p my-aws-profile
+```
+
+针对不同环境，您可以创建多个后端配置文件，例如:
+- `terraform_backend_dev.tfvars`
+- `terraform_backend_test.tfvars`
+- `terraform_backend_prod.tfvars`
+
 请根据您的实际情况修改 `terraform_backend.tfvars` 文件中的以下值：
 - `bucket`: S3 存储桶名称
 - `key`: 状态文件路径前缀
