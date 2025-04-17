@@ -37,13 +37,13 @@ output "mount_target_dns_names" {
 }
 
 output "vpc_endpoint_id" {
-  description = "The ID of the VPC endpoint for EFS (if created)"
-  value       = var.create_vpc_endpoint ? aws_vpc_endpoint.efs[0].id : null
+  description = "The ID of the VPC endpoint for EFS (if referenced)"
+  value       = var.existing_vpc_endpoint_id
 }
 
 output "vpc_endpoint_dns_names" {
-  description = "The DNS names of the VPC endpoint for EFS (if created)"
-  value       = var.create_vpc_endpoint ? aws_vpc_endpoint.efs[0].dns_entry : null
+  description = "The DNS names of the referenced VPC endpoint for EFS (if available)"
+  value       = var.existing_vpc_endpoint_id != null ? data.aws_vpc_endpoint.efs[0].dns_entry : null
 }
 
 output "mount_targets_count" {

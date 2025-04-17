@@ -76,7 +76,7 @@ variable "lifecycle_policy" {
 }
 
 variable "access_points" {
-  description = "A map of access point definitions to create"
+  description = "A map of access point definitions to create. IMPORTANT: Each Business Domain/Function MUST use a unique access point following the principle of least privilege."
   type = map(object({
     posix_user = object({
       uid         = number
@@ -96,6 +96,12 @@ variable "access_points" {
   default     = {}
 }
 
+variable "enforce_root_squashing" {
+  description = "Whether to enforce root squashing for the EFS file system. MUST be set to true for production environments."
+  type        = bool
+  default     = true
+}
+
 variable "file_system_policy" {
   description = "A JSON formatted string containing custom policy for the EFS file system"
   type        = string
@@ -103,7 +109,7 @@ variable "file_system_policy" {
 }
 
 variable "use_default_policy" {
-  description = "Whether to use the default policy from policies/default_policy.json"
+  description = "Whether to use the default policy from policies/default_policy.json.tpl"
   type        = bool
   default     = false
 }
@@ -114,34 +120,10 @@ variable "bypass_policy_lockout_safety_check" {
   default     = false
 }
 
-variable "create_vpc_endpoint" {
-  description = "If true, a VPC endpoint for EFS will be created"
-  type        = bool
-  default     = true
-}
-
-variable "vpc_endpoint_subnet_ids" {
-  description = "A list of subnet IDs for the VPC endpoint. If not specified, subnet_ids will be used"
-  type        = list(string)
-  default     = null
-}
-
-variable "vpc_endpoint_security_group_ids" {
-  description = "A list of security group IDs to use for the VPC endpoint. If not specified, a new security group will be created"
-  type        = list(string)
-  default     = null
-}
-
-variable "vpc_endpoint_policy" {
-  description = "A policy to apply to the VPC endpoint"
+variable "existing_vpc_endpoint_id" {
+  description = "ID of existing VPC endpoint for EFS to reference. If provided, no new endpoint is created."
   type        = string
   default     = null
-}
-
-variable "vpc_endpoint_private_dns_enabled" {
-  description = "Whether or not to enable private DNS for the VPC endpoint"
-  type        = bool
-  default     = true
 }
 
 variable "tags" {
@@ -156,14 +138,13 @@ variable "file_system_tags" {
   default     = {}
 }
 
-variable "vpc_endpoint_tags" {
-  description = "Additional tags for the VPC endpoint"
-  type        = map(string)
-  default     = {}
-}
-
 variable "access_point_tags" {
   description = "Additional tags for all access points"
   type        = map(string)
   default     = {}
+}
+
+variable "region" {
+  description = "AWS region where resources will be created"
+  type        = string
 }

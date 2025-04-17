@@ -5,13 +5,16 @@ provider "aws" {
 # 获取当前账户ID
 data "aws_caller_identity" "current" {}
 
-# 获取可用区
-data "aws_availability_zones" "available" {
-  state = "available"
+# 使用指定的VPC ID或创建新的VPC
+locals {
+  vpc_id = var.vpc_id != null ? var.vpc_id : aws_vpc.nfs_vpc[0].id
+  subnet_ids = var.private_subnet_ids != null ? var.private_subnet_ids : [for subnet in aws_subnet.nfs_private_subnets : subnet.id]
 }
 
-# VPC
+# 仅在需要时创建VPC
 resource "aws_vpc" "nfs_vpc" {
+  count = var.vpc_id == null ? 1 : 0
+
   cidr_block           = var.vpc_cidr
   enable_dns_support   = true
   enable_dns_hostnames = true
@@ -24,12 +27,13 @@ resource "aws_vpc" "nfs_vpc" {
   )
 }
 
-# 私有子网
+# 仅在需要时创建私有子网
 resource "aws_subnet" "nfs_private_subnets" {
-  count             = length(var.private_subnet_cidrs)
-  vpc_id            = aws_vpc.nfs_vpc.id
+  count = var.vpc_id == null ? length(var.private_subnet_cidrs) : 0
+
+  vpc_id            = local.vpc_id
   cidr_block        = var.private_subnet_cidrs[count.index]
-  availability_zone = data.aws_availability_zones.available.names[count.index % length(data.aws_availability_zones.available.names)]
+  availability_zone = data.aws_availability_zones.available[0].names[count.index % length(data.aws_availability_zones.available[0].names)]
 
   tags = merge(
     var.tags,
@@ -39,9 +43,16 @@ resource "aws_subnet" "nfs_private_subnets" {
   )
 }
 
-# 私有路由表 (仅用于VPC内部路由)
+# 仅在创建新VPC时获取可用区信息
+data "aws_availability_zones" "available" {
+  count = var.vpc_id == null ? 1 : 0
+  state = "available"
+}
+
+# 仅在需要时创建私有路由表
 resource "aws_route_table" "nfs_private_rt" {
-  vpc_id = aws_vpc.nfs_vpc.id
+  count = var.vpc_id == null ? 1 : 0
+  vpc_id = local.vpc_id
 
   tags = merge(
     var.tags,
@@ -51,89 +62,71 @@ resource "aws_route_table" "nfs_private_rt" {
   )
 }
 
-# 私有子网关联到私有路由表
+# 仅在需要时创建路由表关联
 resource "aws_route_table_association" "nfs_private_rta" {
-  count          = length(var.private_subnet_cidrs)
+  count = var.vpc_id == null ? length(var.private_subnet_cidrs) : 0
+
   subnet_id      = aws_subnet.nfs_private_subnets[count.index].id
-  route_table_id = aws_route_table.nfs_private_rt.id
+  route_table_id = aws_route_table.nfs_private_rt[0].id
 }
 
-# 使用外部模块创建EFS安全组
-module "efs_security_group" {
-  source  = var.efs_security_group_module
-  version = var.efs_security_group_version
-
-  name        = var.efs_security_group_name != null ? var.efs_security_group_name : "${var.environment}-efs-sg"
-  description = "Security group for EFS file system (VPC internal only)"
-  vpc_id      = aws_vpc.nfs_vpc.id
-
-  # 允许NFS端口入站流量（仅VPC内部）
-  ingress_with_cidr_blocks = [
-    {
-      from_port   = 2049
-      to_port     = 2049
-      protocol    = "tcp"
-      description = "NFS from within VPC"
-      cidr_blocks = aws_vpc.nfs_vpc.cidr_block
-    }
-  ]
-
-  # 仅允许VPC内部出站流量
-  egress_with_cidr_blocks = [
-    {
-      from_port   = 0
-      to_port     = 0
-      protocol    = "-1"
-      description = "All traffic within VPC only"
-      cidr_blocks = aws_vpc.nfs_vpc.cidr_block
-    }
-  ]
-
-  tags = merge(
-    var.tags,
-    {
-      Name = "${var.environment}-efs-sg"
-    }
-  )
+# 创建安全组 - 使用指定的基础安全组模块
+module "security_group" {
+  count = length(var.sg_egress_rules) > 0 || length(var.sg_ingress_rules) > 0 ? 1 : 0
+  
+  source = "git::"
+  
+  description = var.sg_description
+  vpc_id = local.vpc_id
+  sg_ingress_rules = var.sg_ingress_rules
+  sg_egress_rules = var.sg_egress_rules
+  region = var.region
+  tags = var.sg_tags
 }
 
 # 调用EFS模块
 module "efs" {
   source = "../../modules/efs"
 
-  name               = "${var.environment}-nfs"
-  vpc_id             = aws_vpc.nfs_vpc.id
-  subnet_ids         = [for subnet in aws_subnet.nfs_private_subnets : subnet.id]
-  security_group_id  = module.efs_security_group.security_group_id
+  name = "${var.environment}-nfs"
+  vpc_id = local.vpc_id
+  subnet_ids = local.subnet_ids
+  security_group_id = length(var.sg_egress_rules) > 0 || length(var.sg_ingress_rules) > 0 ? module.security_group[0].sg_id : null
   
   # 加密设置
-  encrypted          = var.efs_encrypted
-  kms_key_id         = var.efs_kms_key_id
+  encrypted = var.efs_encrypted
+  kms_key_id = var.efs_kms_key_id
   
   # 性能设置
-  performance_mode   = var.efs_performance_mode
-  throughput_mode    = var.efs_throughput_mode
+  performance_mode = var.efs_performance_mode
+  throughput_mode = var.efs_throughput_mode
   provisioned_throughput_in_mibps = var.efs_provisioned_throughput_in_mibps
   
   # 生命周期策略
-  lifecycle_policy   = var.efs_lifecycle_policy
+  lifecycle_policy = var.efs_lifecycle_policy
   
   # 备份设置
-  enable_backup      = var.efs_enable_backup
+  enable_backup = var.efs_enable_backup
   
   # 访问点
-  access_points      = var.efs_access_points
+  access_points = var.efs_access_points
+  
+  # Root Squashing - 安全要求
+  enforce_root_squashing = var.efs_enforce_root_squashing
   
   # 策略设置
   use_default_policy = var.efs_use_default_policy
   file_system_policy = var.efs_file_system_policy
-  allowed_cidr_blocks = [aws_vpc.nfs_vpc.cidr_block]
+  allowed_cidr_blocks = var.efs_allowed_cidr_blocks
   
-  # VPC端点设置 - 不需要连接互联网
-  create_vpc_endpoint = false
+  # 引用现有VPC端点
+  existing_vpc_endpoint_id = var.existing_vpc_endpoint_id
+  
+  # 区域
+  region = var.region
   
   # 其他设置
-  tags               = merge(
+  tags = merge(
     var.tags,
     {
       Environment = var.environment

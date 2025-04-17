@@ -23,10 +23,61 @@ variable "vpc_cidr" {
   default     = "10.0.0.0/16"
 }
 
+variable "vpc_id" {
+  description = "ID of an existing VPC where resources will be deployed"
+  type        = string
+  default     = null
+}
+
 variable "private_subnet_cidrs" {
   description = "CIDR blocks for the private subnets"
   type        = list(string)
   default     = ["10.0.10.0/24", "10.0.11.0/24"]
+}
+
+variable "private_subnet_ids" {
+  description = "List of existing private subnet IDs to use for EFS mount targets"
+  type        = list(string)
+  default     = null
+}
+
+# Security Group Configuration
+variable "sg_description" {
+  description = "Description for the EFS security group"
+  type        = string
+  default     = "Security group for EFS file system (VPC internal only)"
+}
+
+variable "sg_ingress_rules" {
+  description = "List of ingress rules for the EFS security group"
+  type = list(object({
+    from_port   = number
+    to_port     = number
+    protocol    = string
+    cidr_blocks = optional(list(string))
+    security_groups = optional(list(string))
+    description = optional(string)
+  }))
+  default = []
+}
+
+variable "sg_egress_rules" {
+  description = "List of egress rules for the EFS security group"
+  type = list(object({
+    from_port   = number
+    to_port     = number
+    protocol    = string
+    cidr_blocks = optional(list(string))
+    security_groups = optional(list(string))
+    description = optional(string)
+  }))
+  default = []
+}
+
+variable "sg_tags" {
+  description = "Tags to attach to the security group"
+  type        = map(string)
+  default     = {}
 }
 
 # EFS Configuration
@@ -81,7 +132,7 @@ variable "efs_allowed_cidr_blocks" {
 }
 
 variable "efs_access_points" {
-  description = "Map of access points to create for the EFS file system"
+  description = "Map of access points to create for the EFS file system. IMPORTANT: Each Business Domain/Function MUST use a unique access point following the principle of least privilege."
   type = map(object({
     posix_user = object({
       uid            = number
@@ -101,6 +152,12 @@ variable "efs_access_points" {
   default     = {}
 }
 
+variable "efs_enforce_root_squashing" {
+  description = "Whether to enforce root squashing for the EFS file system. MUST be set to true for production environments."
+  type        = bool
+  default     = true
+}
+
 variable "efs_use_default_policy" {
   description = "Whether to use the default policy from policies/default_policy.json.tpl"
   type        = bool
@@ -113,33 +170,8 @@ variable "efs_file_system_policy" {
   default     = null
 }
 
-variable "efs_create_vpc_endpoint" {
-  description = "Whether to create a VPC endpoint for EFS - not needed for internal-only VPC"
-  type        = bool
-  default     = false
-}
-
-variable "efs_vpc_endpoint_subnet_ids" {
-  description = "List of subnet IDs for the VPC endpoint (if enabled)"
-  type        = list(string)
-  default     = null
-}
-
-# Security Group module configuration
-variable "efs_security_group_module" {
-  description = "Name of the security group module to use"
-  type        = string
-  default     = "terraform-aws-modules/security-group/aws"
-}
-
-variable "efs_security_group_version" {
-  description = "Version of the security group module to use"
-  type        = string
-  default     = "~> 4.0"
-}
-
-variable "efs_security_group_name" {
-  description = "Name for the EFS security group"
+variable "existing_vpc_endpoint_id" {
+  description = "ID of existing VPC endpoint for EFS to reference"
   type        = string
   default     = null
 }
