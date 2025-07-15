@@ -1,3 +1,2 @@
-# 推荐Python 3.9及以上（建议3.11，兼容AWS Lambda Python 3.11运行时）
-boto3
-redis 
+# 仅需boto3，兼容AWS Lambda Python 3.11运行时
+boto3 
