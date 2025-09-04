@@ -189,33 +189,47 @@ def _call_asterisk_start(ip: str, task_arn: str, drain_id: str) -> bool:
     return False
 
 
-def _extract_cluster_service_from_alarm(event) -> tuple[str, str]:
-    # CloudWatch Alarm State Change -> detail.alarmName
-    alarm_name = event.get("detail", {}).get("alarmName")
-    if not alarm_name:
-        raise ValueError("alarmName missing in event")
-    res = cloudwatch.describe_alarms(AlarmNames=[alarm_name])
-    if not res.get("MetricAlarms"):
-        raise ValueError("alarm not found")
-    alarm = res["MetricAlarms"][0]
-    dims = {d["Name"]: d["Value"] for d in alarm.get("Dimensions", [])}
-    cluster_name = dims.get("ClusterName")
-    service_name = dims.get("ServiceName")
-    if not cluster_name or not service_name:
-        raise ValueError("ClusterName/ServiceName not found in alarm dimensions")
-    # Convert names to ARNs via DescribeServices
-    svc = ecs.describe_services(cluster=cluster_name, services=[service_name])["services"][0]
-    return svc["clusterArn"], svc["serviceArn"]
+def _extract_cluster_service_task_from_ecs_event(event) -> tuple[str, str, str]:
+    """Extract cluster, service, and task from ECS protected scale-in attempt event"""
+    detail = event.get("detail", {})
+    cluster_arn = detail.get("clusterArn")
+    task_arn = detail.get("taskArn")
+    
+    if not cluster_arn or not task_arn:
+        raise ValueError("Missing clusterArn or taskArn in event")
+    
+    # 通过 DescribeTasks 获取服务信息
+    response = ecs.describe_tasks(
+        cluster=cluster_arn,
+        tasks=[task_arn]
+    )
+    
+    if not response.get("tasks"):
+        raise ValueError("Task not found")
+    
+    task = response["tasks"][0]
+    service_arn = task.get("serviceArn")
+    
+    if not service_arn:
+        raise ValueError("Task not associated with a service")
+    
+    return cluster_arn, service_arn, task_arn
 
 
 def handler(event, context):
     """Main handler with comprehensive error handling and logging"""
     try:
-        logger.info(f"Processing scale-in event: {json.dumps(event)}")
+        logger.info(f"Processing ECS protected scale-in event: {json.dumps(event)}")
         
-        # Extract cluster and service from alarm event
-        cluster_arn, service_arn = _extract_cluster_service_from_alarm(event)
-        logger.info(f"Target service: {service_arn}, cluster: {cluster_arn}")
+        # Extract cluster, service, and task from ECS event
+        cluster_arn, service_arn, task_arn = _extract_cluster_service_task_from_ecs_event(event)
+        logger.info(f"Target task: {task_arn}, service: {service_arn}, cluster: {cluster_arn}")
+        
+        # Check if task is already being drained
+        existing_item = table.get_item(Key={"taskArn": task_arn}).get("Item")
+        if existing_item and existing_item.get("state") == "DRAINING":
+            logger.info(f"Task {task_arn} already being drained")
+            return {"status": "skipped", "reason": "already_draining"}
         
         # Check cooldown period
         if _check_cooldown(service_arn):
@@ -250,30 +264,22 @@ def handler(event, context):
             _put_metric("ScaleInSkipped", 1, dimensions=[{"Name": "Reason", "Value": "at_min_capacity"}])
             return {"status": "skipped", "reason": "at_min_capacity", "desired": desired, "min": min_capacity}
 
-        # Get running tasks
-        tasks = _get_running_tasks(cluster_arn, service_arn)
-        if not tasks:
-            logger.info(f"No running tasks found for service {service_arn}")
-            _put_metric("ScaleInSkipped", 1, dimensions=[{"Name": "Reason", "Value": "no_tasks"}])
-            return {"status": "skipped", "reason": "no_tasks"}
-
-        # Pick target task
-        target = _pick_task(tasks)
-        if not target:
-            logger.info(f"No suitable candidate task found for service {service_arn}")
-            _put_metric("ScaleInSkipped", 1, dimensions=[{"Name": "Reason", "Value": "no_candidate"}])
-            return {"status": "skipped", "reason": "no_candidate"}
-
-        # Get task IP
-        ip = _get_task_ip(target)
+        # Get task details and IP
+        task_response = ecs.describe_tasks(cluster=cluster_arn, tasks=[task_arn])
+        if not task_response.get("tasks"):
+            logger.error(f"Task {task_arn} not found")
+            _put_metric("ScaleInErrors", 1, dimensions=[{"Name": "Reason", "Value": "task_not_found"}])
+            return {"status": "error", "reason": "task_not_found"}
+        
+        task = task_response["tasks"][0]
+        ip = _get_task_ip(task)
         if not ip:
-            logger.error(f"Could not extract IP for task {target.get('taskArn')}")
+            logger.error(f"Could not extract IP for task {task_arn}")
             _put_metric("ScaleInErrors", 1, dimensions=[{"Name": "Reason", "Value": "no_ip"}])
             return {"status": "error", "reason": "no_ip"}
 
-        task_arn = target["taskArn"]
         drain_id = _hash_id(f"{task_arn}:{_now()//600}")  # bucketed 10min id
-        logger.info(f"Selected task {task_arn} with IP {ip}, drainId: {drain_id}")
+        logger.info(f"Processing task {task_arn} with IP {ip}, drainId: {drain_id}")
 
         # Transition Running -> DRAINING atomically
         try:

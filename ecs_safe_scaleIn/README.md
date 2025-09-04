@@ -5,22 +5,19 @@ This module implements a safe scale-in workflow for stateful Asterisk ECS tasks 
 ## Architecture Overview
 
 ```
-[Monitoring & Triggering]
-  CloudWatch Metrics (ECS Service CPU <= 30%)
+[ECS Event Triggering]
+  ECS Task State Change Event
       |
       v
-  CloudWatch Alarm (30min low CPU)
-      |
-      v
-  EventBridge Rule (ALARM -> trigger)
+  EventBridge Rule (protectedScaleInAttempt)
       |
       v
 +-------------------------------------------------------+
 | Lambda: Scale Manager                                 |
-|  - Extract cluster/service from alarm event          |
+|  - Extract cluster/service/task from ECS event       |
 |  - Check cooldown (15min) & hourly limits (2/hour)   |
 |  - Verify min capacity & concurrent drain limits     |
-|  - Select target ECS Task (newest first)             |
+|  - Process specific task from event (no selection)   |
 |  - Record/validate DRAINING state (DynamoDB atomic)  |
 |  - Call Kamailio Lambda (3 retries + rollback)       |
 |  - Call Asterisk HTTP /drain/start (3 retries)       |
@@ -97,8 +94,8 @@ This module implements a safe scale-in workflow for stateful Asterisk ECS tasks 
 
 ## Components
 
-- **CloudWatch Alarm** on ECS Service CPU → **EventBridge Rule** → **Scale Manager Lambda**
-- **Scale Manager** selects target ECS task, marks DRAINING in DynamoDB, removes IP from Kamailio, calls Asterisk HTTP /drain/start
+- **ECS Task State Change Event** (protectedScaleInAttempt) → **EventBridge Rule** → **Scale Manager Lambda**
+- **Scale Manager** processes specific task from event, marks DRAINING in DynamoDB, removes IP from Kamailio, calls Asterisk HTTP /drain/start
 - **Asterisk** finishes draining and calls **Scaler Lambda** (Function URL)
 - **Scaler** disables task protection and decrements desired count
 
@@ -108,13 +105,12 @@ This module implements a safe scale-in workflow for stateful Asterisk ECS tasks 
 - IAM roles/policies with minimal permissions
 - Two Lambdas (scale_manager, scaler) with packaging via archive_file
 - Function URL for scaler (shared token auth enforced in code)
-- CloudWatch Alarm and EventBridge Rule wired to scale_manager
+- EventBridge Rule for ECS protectedScaleInAttempt events
 - CloudWatch metrics and logging permissions
 
 ## Variables (see variables.tf)
 
 - `region`, `project_name`, `env`
-- `ecs_cluster_name`, `ecs_service_name` (for CloudWatch Alarm)
 - `kamailio_lambda_arn`
 - `asterisk_http_port`, `asterisk_http_scheme`
 - `drain_timeout_seconds`, `drain_concurrency_limit`
@@ -132,7 +128,7 @@ This module implements a safe scale-in workflow for stateful Asterisk ECS tasks 
 
 1. Fill in `terraform.tfvars` with required variables
 2. `terraform init && terraform apply`
-3. Verify CloudWatch Alarm and EventBridge trigger the Scale Manager when CPU is low
+3. Verify EventBridge Rule triggers the Scale Manager when ECS protected scale-in attempts occur
 4. Monitor CloudWatch metrics and logs for drain operations
 
 ## Production Features

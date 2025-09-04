@@ -64,7 +64,7 @@ data "aws_iam_policy_document" "scale_manager_policy" {
   }
 
   statement {
-    actions   = ["cloudwatch:DescribeAlarms", "cloudwatch:PutMetricData"]
+    actions   = ["cloudwatch:PutMetricData"]
     resources = ["*"]
   }
 
@@ -209,44 +209,28 @@ resource "aws_lambda_permission" "allow_eventbridge_scale_manager" {
   action        = "lambda:InvokeFunction"
   function_name = aws_lambda_function.scale_manager.function_name
   principal     = "events.amazonaws.com"
-  source_arn    = aws_cloudwatch_event_rule.low_cpu.arn
+  source_arn    = aws_cloudwatch_event_rule.protected_scale_in_attempt.arn
 }
 
-resource "aws_cloudwatch_event_rule" "low_cpu" {
-  name        = "${local.name_prefix}-ecs-low-cpu"
-  description = "Trigger when ECS Service CPU <= 30% for 30 minutes"
+resource "aws_cloudwatch_event_rule" "protected_scale_in_attempt" {
+  name        = "${local.name_prefix}-protected-scale-in-attempt"
+  description = "Capture ECS protected scale-in attempts"
+  
   event_pattern = jsonencode({
-    "source": ["aws.cloudwatch"],
-    "detail-type": ["CloudWatch Alarm State Change"],
-    "detail": {
-      "state": {"value": ["ALARM"]},
-      "alarmName": ["${local.name_prefix}-service-low-cpu"]
+    source = ["aws.ecs"]
+    "detail-type" = ["ECS Task State Change"]
+    detail = {
+      containers = {
+        reason = ["protectedScaleInAttempt"]
+      }
     }
   })
 }
 
-resource "aws_cloudwatch_event_target" "low_cpu_target" {
-  rule      = aws_cloudwatch_event_rule.low_cpu.name
+resource "aws_cloudwatch_event_target" "protected_scale_in_target" {
+  rule      = aws_cloudwatch_event_rule.protected_scale_in_attempt.name
   target_id = "scale-manager"
   arn       = aws_lambda_function.scale_manager.arn
-}
-
-resource "aws_cloudwatch_metric_alarm" "service_low_cpu" {
-  alarm_name          = "${local.name_prefix}-service-low-cpu"
-  comparison_operator = "LessThanOrEqualToThreshold"
-  evaluation_periods  = 6
-  datapoints_to_alarm = 6
-  metric_name         = "CPUUtilization"
-  namespace           = "AWS/ECS"
-  period              = 300
-  statistic           = "Average"
-  threshold           = 30
-  treat_missing_data  = "notBreaching"
-
-  dimensions = {
-    ClusterName = var.ecs_cluster_name
-    ServiceName = var.ecs_service_name
-  }
 }
 
 

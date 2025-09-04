@@ -2,8 +2,7 @@ variable "region" { type = string }
 variable "project_name" { type = string }
 variable "env" { type = string }
 
-variable "ecs_cluster_name" { type = string }
-variable "ecs_service_name" { type = string }
+# ECS cluster and service names are no longer needed as we get them from the event
 
 variable "kamailio_lambda_arn" { type = string }
 

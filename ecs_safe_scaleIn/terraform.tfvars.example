@@ -1,0 +1,21 @@
+# ECS Safe Scale-In Configuration Example
+# Copy this file to terraform.tfvars and fill in your values
+
+# Basic configuration
+region       = "us-west-2"
+project_name = "asterisk-voice"
+env          = "prod"
+
+# Kamailio Lambda ARN (existing)
+kamailio_lambda_arn = "arn:aws:lambda:us-west-2:123456789012:function:kamailio-distributor"
+
+# Asterisk HTTP configuration
+asterisk_http_port   = 8080
+asterisk_http_scheme = "http"
+
+# Drain configuration
+drain_timeout_seconds    = 14400  # 4 hours
+drain_concurrency_limit  = 1      # Only 1 task draining at a time
+
+# Security
+shared_token = "your-secure-random-token-here"
