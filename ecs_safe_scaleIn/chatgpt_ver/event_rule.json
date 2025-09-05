@@ -1,0 +1,20 @@
+{
+    "Name": "ecs-scalein-attempt-failed-rule",
+    "EventPattern": {
+      "source": ["aws.ecs"],
+      "detail-type": ["ECS Task State Change"],
+      "detail": {
+        "containers": {
+          "reason": ["protectedScaleInAttempt"]
+        }
+      }
+    },
+    "State": "ENABLED",
+    "Targets": [
+      {
+        "Id": "ScaleManagerLambdaTarget",
+        "Arn": "arn:aws:lambda:ap-southeast-1:123456789012:function:ScaleManagerLambda"
+      }
+    ]
+  }
+  
