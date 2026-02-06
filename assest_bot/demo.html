@@ -1,0 +1,891 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Cloud Estate Explorer</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&family=Outfit:wght@300;500;600;700&display=swap" rel="stylesheet" />
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    :root {
+      --bg-deep: #0a0e17;
+      --bg-card: rgba(15, 23, 42, 0.85);
+      --bg-sidebar: rgba(15, 23, 42, 0.95);
+      --border: rgba(0, 245, 212, 0.25);
+      --accent: #00f5d4;
+      --accent-dim: #00f5d466;
+      --accent-glow: rgba(0, 245, 212, 0.35);
+      --text: #e2e8f0;
+      --text-muted: #94a3b8;
+      --text-weak: rgba(148, 163, 184, 0.5);
+      --bot-bubble: linear-gradient(145deg, rgba(0, 245, 212, 0.08) 0%, rgba(15, 23, 42, 0.9) 100%);
+      --example-hover: rgba(0, 245, 212, 0.12);
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      font-family: 'Outfit', -apple-system, sans-serif;
+      background: var(--bg-deep);
+      margin: 0;
+      min-height: 100vh;
+      color: var(--text);
+      overflow-x: hidden;
+    }
+
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background-image:
+        linear-gradient(rgba(0, 245, 212, 0.03) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(0, 245, 212, 0.03) 1px, transparent 1px);
+      background-size: 48px 48px;
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    .app {
+      display: flex;
+      max-width: 1600px;
+      margin: 0 auto;
+      min-height: 100vh;
+      position: relative;
+      z-index: 1;
+    }
+
+    /* Left: Main menu */
+    .nav-sidebar {
+      width: 220px;
+      flex-shrink: 0;
+      padding: 24px 12px;
+      background: var(--bg-sidebar);
+      border-right: 1px solid var(--border);
+      backdrop-filter: blur(12px);
+    }
+
+    .nav-title {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 10px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.2em;
+      color: var(--text-muted);
+      margin-bottom: 20px;
+      padding-left: 8px;
+    }
+
+    .nav-item {
+      display: block;
+      width: 100%;
+      padding: 12px 14px;
+      text-align: left;
+      font-family: 'Outfit', sans-serif;
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--text-muted);
+      background: transparent;
+      border: none;
+      border-radius: 10px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      text-decoration: none;
+      margin-bottom: 4px;
+    }
+
+    .nav-item:hover {
+      color: var(--text);
+      background: rgba(30, 41, 59, 0.5);
+    }
+
+    .nav-item.active {
+      color: var(--accent);
+      background: rgba(0, 245, 212, 0.1);
+      border: 1px solid var(--border);
+    }
+
+    /* Center: content */
+    .main {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      min-width: 0;
+      border-right: 1px solid var(--border);
+    }
+
+    .header {
+      padding: 16px 24px;
+      border-bottom: 1px solid var(--border);
+      background: rgba(10, 14, 23, 0.6);
+      backdrop-filter: blur(8px);
+    }
+
+    .header h1 {
+      font-size: 18px;
+      font-weight: 700;
+      margin: 0;
+      background: linear-gradient(90deg, #fff 0%, var(--accent) 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .header p {
+      font-size: 12px;
+      color: var(--text-muted);
+      margin: 4px 0 0 0;
+    }
+
+    /* Query bar at top */
+    .query-section {
+      padding: 20px 24px;
+      border-bottom: 1px solid var(--border);
+      background: rgba(15, 23, 42, 0.4);
+    }
+
+    .example-chips {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-bottom: 12px;
+    }
+
+    .example-chip {
+      padding: 6px 12px;
+      font-size: 12px;
+      color: var(--text-weak);
+      background: rgba(30, 41, 59, 0.4);
+      border: 1px solid rgba(0, 245, 212, 0.12);
+      border-radius: 8px;
+      cursor: pointer;
+      transition: color 0.2s, border-color 0.2s, background 0.2s;
+    }
+
+    .example-chip:hover {
+      color: var(--text-muted);
+      background: var(--example-hover);
+      border-color: var(--accent-dim);
+    }
+
+    .query-row {
+      display: flex;
+      gap: 12px;
+      align-items: flex-end;
+    }
+
+    .query-input {
+      flex: 1;
+      min-height: 48px;
+      padding: 12px 16px;
+      font-family: 'Outfit', sans-serif;
+      font-size: 14px;
+      color: var(--text);
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      resize: none;
+      transition: border-color 0.2s, box-shadow 0.2s;
+    }
+
+    .query-input::placeholder { color: var(--text-muted); }
+
+    .query-input:focus {
+      outline: none;
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px var(--accent-glow);
+    }
+
+    .send-btn {
+      flex-shrink: 0;
+      width: 48px;
+      height: 48px;
+      border-radius: 12px;
+      border: none;
+      background: linear-gradient(135deg, var(--accent) 0%, #06b6d4 100%);
+      color: var(--bg-deep);
+      font-size: 18px;
+      cursor: pointer;
+      transition: transform 0.2s, box-shadow 0.2s;
+    }
+
+    .send-btn:hover {
+      transform: scale(1.05);
+      box-shadow: 0 0 24px var(--accent-glow);
+    }
+
+    /* Result area (single, overwritten each time) */
+    .result-section {
+      flex: 1;
+      overflow-y: auto;
+      padding: 24px;
+    }
+
+    .result-placeholder {
+      text-align: center;
+      padding: 60px 24px;
+      color: var(--text-muted);
+      font-size: 14px;
+    }
+
+    .result-panel {
+      background: var(--bot-bubble);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 20px 24px;
+      box-shadow: 0 4px 24px rgba(0, 0, 0, 0.2);
+      animation: fadeIn 0.3s ease;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(8px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .result-header {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 16px;
+      margin-bottom: 16px;
+    }
+
+    .result-query-text {
+      font-size: 13px;
+      color: var(--text-muted);
+      flex: 1;
+      word-break: break-word;
+    }
+
+    .result-actions {
+      display: flex;
+      gap: 8px;
+      flex-shrink: 0;
+    }
+
+    .btn-copy {
+      padding: 8px 14px;
+      font-size: 12px;
+      font-family: 'Outfit', sans-serif;
+      color: var(--accent);
+      background: rgba(0, 245, 212, 0.1);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      cursor: pointer;
+      transition: background 0.2s, box-shadow 0.2s;
+    }
+
+    .btn-copy:hover {
+      background: rgba(0, 245, 212, 0.18);
+      box-shadow: 0 0 12px var(--accent-glow);
+    }
+
+    .btn-copy.copied {
+      color: #22c55e;
+      border-color: rgba(34, 197, 94, 0.5);
+    }
+
+    .result-title {
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--accent);
+      margin-bottom: 14px;
+    }
+
+    .result-table-wrap {
+      overflow-x: auto;
+      margin-top: 8px;
+      border-radius: 10px;
+      border: 1px solid var(--border);
+    }
+
+    .result-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 13px;
+    }
+
+    .result-table th,
+    .result-table td {
+      padding: 10px 14px;
+      text-align: left;
+      border-bottom: 1px solid rgba(0, 245, 212, 0.1);
+    }
+
+    .result-table th {
+      background: rgba(0, 245, 212, 0.08);
+      color: var(--accent);
+      font-weight: 600;
+    }
+
+    .result-table tr:last-child td { border-bottom: none; }
+
+    .result-table tr:hover td {
+      background: rgba(0, 245, 212, 0.04);
+    }
+
+    .chart-wrap {
+      margin-top: 12px;
+      padding: 16px;
+      background: rgba(0, 0, 0, 0.2);
+      border-radius: 12px;
+      max-width: 480px;
+      height: 280px;
+    }
+
+    .chart-wrap canvas { max-height: 248px; }
+
+    .fallback-hint {
+      font-size: 13px;
+      color: var(--text-muted);
+      margin-top: 8px;
+    }
+
+    /* Right: Query history */
+    .history-sidebar {
+      width: 280px;
+      flex-shrink: 0;
+      padding: 24px 16px;
+      background: var(--bg-sidebar);
+      backdrop-filter: blur(12px);
+    }
+
+    .history-title {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.12em;
+      color: var(--accent);
+      margin-bottom: 16px;
+      padding-left: 4px;
+    }
+
+    .history-list {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .history-item {
+      display: block;
+      width: 100%;
+      padding: 10px 12px;
+      text-align: left;
+      font-size: 12px;
+      color: var(--text-muted);
+      background: rgba(30, 41, 59, 0.5);
+      border: 1px solid transparent;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      word-break: break-word;
+      line-height: 1.4;
+    }
+
+    .history-item:hover {
+      color: var(--text);
+      background: var(--example-hover);
+      border-color: var(--accent-dim);
+    }
+
+    .history-empty {
+      font-size: 12px;
+      color: var(--text-weak);
+      padding: 12px 0;
+    }
+
+    .result-section::-webkit-scrollbar,
+    .history-list::-webkit-scrollbar { width: 6px; }
+
+    .result-section::-webkit-scrollbar-track,
+    .history-list::-webkit-scrollbar-track {
+      background: rgba(15, 23, 42, 0.5);
+      border-radius: 3px;
+    }
+
+    .result-section::-webkit-scrollbar-thumb,
+    .history-list::-webkit-scrollbar-thumb {
+      background: var(--border);
+      border-radius: 3px;
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <nav class="nav-sidebar">
+      <div class="nav-title">Menu</div>
+      <a href="#" class="nav-item active">Cloud Estate Explorer</a>
+      <a href="#" class="nav-item">Health Panel</a>
+      <a href="#" class="nav-item">Execution Hub</a>
+      <a href="#" class="nav-item">ITSO Self-Service Center</a>
+    </nav>
+
+    <main class="main">
+      <header class="header">
+        <h1>Cloud Estate Explorer</h1>
+        <p>Natural language queries over multi-cloud resources (demo — no backend)</p>
+      </header>
+
+      <section class="query-section">
+        <div class="example-chips" id="exampleChips"></div>
+        <div class="query-row">
+          <textarea class="query-input" id="queryInput" placeholder="e.g. List RDS PostgreSQL versions by owner..." rows="1"></textarea>
+          <button type="button" class="send-btn" id="sendBtn" title="Send">➤</button>
+        </div>
+      </section>
+
+      <section class="result-section" id="resultSection">
+        <div class="result-placeholder" id="resultPlaceholder">
+          Run a query or pick an example above. Results will appear here and be overwritten by the next query.
+        </div>
+        <div class="result-panel" id="resultPanel" style="display: none;"></div>
+      </section>
+    </main>
+
+    <aside class="history-sidebar">
+      <div class="history-title">Query History</div>
+      <div class="history-list" id="historyList"></div>
+      <div class="history-empty" id="historyEmpty">No queries yet.</div>
+    </aside>
+  </div>
+
+  <script>
+    const EXAMPLE_QUERIES = [
+      'List all AWS accounts under the Finance department',
+      'Show me RDS PostgreSQL version counts',
+      'Cloud resource distribution by platform',
+      'EC2 instances count by region',
+      'RDS instances by owner and engine',
+      'Top 5 GCP projects by resource count',
+      'List Azure SQL DB by subscription',
+      'ECS clusters by account and status',
+      'All RDS instances with size and engine',
+      'Show me the chart for the distribution on cloud platform by no. of accounts',
+      'Chart: RDS instances by owner',
+      'Visualize EC2 instances by region as bar chart'
+    ];
+
+    const queryInput = document.getElementById('queryInput');
+    const sendBtn = document.getElementById('sendBtn');
+    const resultSection = document.getElementById('resultSection');
+    const resultPlaceholder = document.getElementById('resultPlaceholder');
+    const resultPanel = document.getElementById('resultPanel');
+    const historyList = document.getElementById('historyList');
+    const historyEmpty = document.getElementById('historyEmpty');
+
+    let currentChart = null;
+    const queryHistory = [];
+    const MAX_HISTORY = 50;
+
+    function escapeHtml(s) {
+      const el = document.createElement('div');
+      el.textContent = s;
+      return el.innerHTML;
+    }
+
+    function renderExampleChips() {
+      const container = document.getElementById('exampleChips');
+      container.innerHTML = EXAMPLE_QUERIES.map(q =>
+        `<button type="button" class="example-chip" data-query="${escapeHtml(q)}">${escapeHtml(q)}</button>`
+      ).join('');
+      container.querySelectorAll('.example-chip').forEach(btn => {
+        btn.addEventListener('click', () => {
+          queryInput.value = btn.getAttribute('data-query');
+          runQuery(btn.getAttribute('data-query'));
+        });
+      });
+    }
+
+    function addToHistory(query) {
+      const t = query.trim();
+      if (!t) return;
+      const idx = queryHistory.indexOf(t);
+      if (idx >= 0) queryHistory.splice(idx, 1);
+      queryHistory.unshift(t);
+      if (queryHistory.length > MAX_HISTORY) queryHistory.pop();
+      renderHistory();
+    }
+
+    function renderHistory() {
+      historyList.innerHTML = '';
+      historyEmpty.style.display = queryHistory.length ? 'none' : 'block';
+      queryHistory.forEach(q => {
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'history-item';
+        btn.textContent = q.length > 80 ? q.slice(0, 77) + '...' : q;
+        btn.title = q;
+        btn.addEventListener('click', () => {
+          queryInput.value = q;
+          runQuery(q);
+        });
+        historyList.appendChild(btn);
+      });
+    }
+
+    function setCopyButton(btn, getText) {
+      btn.onclick = async () => {
+        try {
+          await navigator.clipboard.writeText(getText());
+          btn.textContent = 'Copied';
+          btn.classList.add('copied');
+          setTimeout(() => {
+            btn.textContent = 'Copy result';
+            btn.classList.remove('copied');
+          }, 2000);
+        } catch (e) {
+          btn.textContent = 'Copy failed';
+        }
+      };
+    }
+
+    function showResult(currentQuery, title, options) {
+      resultPlaceholder.style.display = 'none';
+      resultPanel.style.display = 'block';
+
+      if (currentChart) {
+        currentChart.destroy();
+        currentChart = null;
+      }
+
+      const { tableHtml, chartId, chartType, chartData, chartLabel, fallback, copyableText } = options;
+      let inner = '';
+
+      inner += `<div class="result-header">
+        <div class="result-query-text">Query: ${escapeHtml(currentQuery)}</div>
+        <div class="result-actions">
+          <button type="button" class="btn-copy" id="btnCopyResult">Copy result</button>
+        </div>
+      </div>`;
+      if (title) inner += `<div class="result-title">${escapeHtml(title)}</div>`;
+      if (tableHtml) inner += `<div class="result-table-wrap">${tableHtml}</div>`;
+      if (chartId && chartType && chartData) {
+        inner += `<div class="chart-wrap"><canvas id="${chartId}"></canvas></div>`;
+      }
+      if (!tableHtml && !chartId && fallback) {
+        inner += `<p class="fallback-hint">${escapeHtml(fallback)}</p>`;
+      }
+
+      resultPanel.innerHTML = inner;
+
+      const copyText = copyableText != null ? copyableText : (() => {
+        if (tableHtml) {
+          const table = resultPanel.querySelector('.result-table');
+          if (table) {
+            const rows = [];
+            table.querySelectorAll('tr').forEach(tr => {
+              const cells = [];
+              tr.querySelectorAll('th, td').forEach(c => cells.push(c.textContent.trim()));
+              rows.push(cells.join('\t'));
+            });
+            return rows.join('\n');
+          }
+        }
+        if (chartData && (chartData.labels && chartData.values)) {
+          return chartData.labels.map((l, i) => `${l}\t${chartData.values[i]}`).join('\n');
+        }
+        return title ? `Result: ${title}\n\n${resultPanel.innerText}` : resultPanel.innerText;
+      });
+
+      const btnCopy = document.getElementById('btnCopyResult');
+      if (btnCopy) setCopyButton(btnCopy, () => copyText);
+
+      if (chartId && chartType && chartData) {
+        requestAnimationFrame(() => {
+          const canvas = document.getElementById(chartId);
+          if (canvas) currentChart = renderChart(canvas.getContext('2d'), chartType, chartData, chartLabel);
+        });
+      }
+    }
+
+    function renderChart(ctx, type, data, label) {
+      const grid = 'rgba(0, 245, 212, 0.08)';
+      const palette = ['#00f5d4', '#06b6d4', '#3b82f6', '#8b5cf6', '#a855f7', '#ec4899'];
+      const labelColor = '#94a3b8';
+
+      if (type === 'pie') {
+        return new Chart(ctx, {
+          type: 'pie',
+          data: {
+            labels: data.labels,
+            datasets: [{
+              data: data.values,
+              backgroundColor: palette.slice(0, data.labels.length),
+              borderColor: 'rgba(10, 14, 23, 0.9)',
+              borderWidth: 2
+            }]
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+              legend: { position: 'bottom', labels: { color: labelColor, font: { size: 11 } } }
+            }
+          }
+        });
+      }
+
+      if (type === 'bar') {
+        return new Chart(ctx, {
+          type: 'bar',
+          data: {
+            labels: data.labels,
+            datasets: [{
+              label: label || 'Count',
+              data: data.values,
+              backgroundColor: palette[0] + 'aa',
+              borderColor: palette[0],
+              borderWidth: 1
+            }]
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: {
+              x: { grid: { color: grid }, ticks: { color: labelColor, maxRotation: 45 } },
+              y: { grid: { color: grid }, ticks: { color: labelColor } }
+            },
+            plugins: { legend: { display: false } }
+          }
+        });
+      }
+      return null;
+    }
+
+    // Richer demo data
+    const DEMO = {
+      awsAccountsFinance: [
+        { accountId: '123456789012', accountName: 'finance-prod', owner: 'Finance', regionCount: 4 },
+        { accountId: '210987654321', accountName: 'finance-dev', owner: 'Finance', regionCount: 3 },
+        { accountId: '345678901234', accountName: 'finance-sandbox', owner: 'Finance', regionCount: 2 },
+        { accountId: '456789012345', accountName: 'finance-analytics', owner: 'Finance', regionCount: 2 },
+        { accountId: '567890123456', accountName: 'finance-datalake', owner: 'Finance', regionCount: 1 }
+      ],
+      rdsPostgresVersions: [
+        { version: '13.7', instanceCount: 6, totalStorage: 1200 },
+        { version: '14.3', instanceCount: 4, totalStorage: 800 },
+        { version: '15.2', instanceCount: 2, totalStorage: 400 },
+        { version: '15.4', instanceCount: 3, totalStorage: 600 },
+        { version: '16.1', instanceCount: 1, totalStorage: 200 }
+      ],
+      resourceDistribution: { labels: ['AWS', 'Azure', 'GCP', 'Alibaba Cloud'], values: [142, 68, 89, 31] },
+      accountsByPlatform: { labels: ['AWS', 'Azure', 'GCP', 'Alibaba Cloud'], values: [28, 12, 18, 8] },
+      ec2ByRegion: {
+        labels: ['us-east-1', 'us-west-2', 'eu-west-1', 'eu-central-1', 'ap-northeast-1', 'ap-southeast-1', 'ap-south-1'],
+        values: [45, 28, 22, 18, 12, 10, 7]
+      },
+      rdsByOwnerEngine: [
+        { owner: 'Platform', engine: 'PostgreSQL', count: 8 },
+        { owner: 'Platform', engine: 'MySQL', count: 4 },
+        { owner: 'Finance', engine: 'PostgreSQL', count: 5 },
+        { owner: 'Finance', engine: 'MySQL', count: 2 },
+        { owner: 'Product', engine: 'MySQL', count: 6 },
+        { owner: 'Product', engine: 'PostgreSQL', count: 3 },
+        { owner: 'Data', engine: 'PostgreSQL', count: 4 }
+      ],
+      topGcpProjects: {
+        labels: ['proj-platform-prod', 'proj-data-analytics', 'proj-finance', 'proj-product-api', 'proj-dev', 'proj-sandbox'],
+        values: [156, 98, 67, 52, 44, 18]
+      },
+      azureSqlBySub: [
+        { subscriptionId: 'sub-azure-platform-01', subscriptionName: 'Platform Production', dbCount: 12, tier: 'Standard' },
+        { subscriptionId: 'sub-azure-finance-02', subscriptionName: 'Finance EU', dbCount: 5, tier: 'Premium' },
+        { subscriptionId: 'sub-azure-product-03', subscriptionName: 'Product West', dbCount: 8, tier: 'Standard' },
+        { subscriptionId: 'sub-azure-dev-04', subscriptionName: 'Dev & Test', dbCount: 15, tier: 'Basic' }
+      ],
+      ecsClusters: [
+        { accountId: '123456789012', clusterName: 'platform-prod-main', status: 'ACTIVE', services: 12 },
+        { accountId: '123456789012', clusterName: 'platform-prod-batch', status: 'ACTIVE', services: 4 },
+        { accountId: '210987654321', clusterName: 'finance-api', status: 'ACTIVE', services: 6 },
+        { accountId: '210987654321', clusterName: 'finance-legacy', status: 'DRAINING', services: 2 },
+        { accountId: '345678901234', clusterName: 'product-workers', status: 'ACTIVE', services: 8 }
+      ],
+      rdsInstancesFull: [
+        { instanceId: 'db-finance-prod-01', engine: 'PostgreSQL', version: '15.2', size: 'db.r5.large', owner: 'Finance' },
+        { instanceId: 'db-finance-prod-02', engine: 'PostgreSQL', version: '14.3', size: 'db.r5.xlarge', owner: 'Finance' },
+        { instanceId: 'db-platform-main', engine: 'PostgreSQL', version: '16.1', size: 'db.r6g.2xlarge', owner: 'Platform' },
+        { instanceId: 'db-platform-report', engine: 'MySQL', version: '8.0', size: 'db.r5.large', owner: 'Platform' },
+        { instanceId: 'db-product-api', engine: 'MySQL', version: '8.0', size: 'db.t3.medium', owner: 'Product' },
+        { instanceId: 'db-product-cache', engine: 'MySQL', version: '5.7', size: 'db.t3.small', owner: 'Product' },
+        { instanceId: 'db-data-warehouse', engine: 'PostgreSQL', version: '15.4', size: 'db.r6g.4xlarge', owner: 'Data' }
+      ]
+    };
+
+    function runQuery(input) {
+      const raw = (input ?? (queryInput.value || '')).trim();
+      if (!raw) return;
+
+      addToHistory(raw);
+      queryInput.value = '';
+
+      const lower = raw.toLowerCase();
+      const ts = Date.now();
+      const chartId = 'chart-' + ts;
+
+      // Chart visualization requests
+      const isChartRequest = lower.includes('chart') || lower.includes('visualize') || lower.includes('show me the chart');
+      const chartType = lower.includes('bar') || lower.includes('column') ? 'bar' : 
+                       lower.includes('pie') ? 'pie' : null;
+
+      // Distribution by number of accounts
+      if (isChartRequest && (lower.includes('distribution') || lower.includes('platform')) && 
+          (lower.includes('account') || lower.includes('no. of accounts') || lower.includes('number of accounts'))) {
+        const preferredType = chartType || 'pie';
+        showResult(raw, `Cloud Platform Distribution by Number of Accounts (${preferredType === 'bar' ? 'Bar Chart' : 'Pie Chart'})`, {
+          chartId, chartType: preferredType, chartData: DEMO.accountsByPlatform, chartLabel: 'Accounts'
+        });
+        return;
+      }
+
+      // Chart: RDS instances by owner
+      if (isChartRequest && lower.includes('rds') && lower.includes('owner')) {
+        const ownerCounts = {};
+        DEMO.rdsByOwnerEngine.forEach(r => {
+          ownerCounts[r.owner] = (ownerCounts[r.owner] || 0) + r.count;
+        });
+        const preferredType = chartType || 'bar';
+        showResult(raw, `RDS Instances by Owner (${preferredType === 'bar' ? 'Bar Chart' : 'Pie Chart'})`, {
+          chartId, chartType: preferredType, 
+          chartData: {
+            labels: Object.keys(ownerCounts),
+            values: Object.values(ownerCounts)
+          },
+          chartLabel: 'Instances'
+        });
+        return;
+      }
+
+      // Visualize EC2 instances by region as chart
+      if (isChartRequest && lower.includes('ec2') && lower.includes('region')) {
+        const preferredType = chartType || 'bar';
+        showResult(raw, `EC2 Instances by Region (${preferredType === 'bar' ? 'Bar Chart' : 'Pie Chart'})`, {
+          chartId, chartType: preferredType, chartData: DEMO.ec2ByRegion, chartLabel: 'Instances'
+        });
+        return;
+      }
+
+      if ((lower.includes('aws') && lower.includes('account')) || (lower.includes('finance') && lower.includes('account'))) {
+        const rows = DEMO.awsAccountsFinance.map(r =>
+          `<tr><td>${r.accountId}</td><td>${r.accountName}</td><td>${r.owner}</td><td>${r.regionCount}</td></tr>`
+        ).join('');
+        showResult(raw, 'AWS Accounts (Finance Department)', {
+          tableHtml: `<table class="result-table">
+            <thead><tr><th>Account ID</th><th>Account Name</th><th>Owner</th><th>Regions</th></tr></thead>
+            <tbody>${rows}</tbody>
+          </table>`
+        });
+        return;
+      }
+
+      if ((lower.includes('rds') || lower.includes('postgres')) && !lower.includes('owner') && !lower.includes('engine') && !lower.includes('instance')) {
+        const rows = DEMO.rdsPostgresVersions.map(r =>
+          `<tr><td>${r.version}</td><td>${r.instanceCount}</td><td>${r.totalStorage} GB</td></tr>`
+        ).join('');
+        showResult(raw, 'RDS PostgreSQL Version Summary', {
+          tableHtml: `<table class="result-table">
+            <thead><tr><th>Version</th><th>Instance Count</th><th>Total Storage (GB)</th></tr></thead>
+            <tbody>${rows}</tbody>
+          </table>`
+        });
+        return;
+      }
+
+      // Cloud resource distribution (if not explicitly requesting accounts chart)
+      if ((lower.includes('distribution') || (lower.includes('platform') && lower.includes('cloud')) || lower.includes('by cloud')) && 
+          !lower.includes('account')) {
+        const preferredType = isChartRequest && chartType ? chartType : 'pie';
+        showResult(raw, 'Cloud Resource Distribution by Platform', {
+          chartId, chartType: preferredType, chartData: DEMO.resourceDistribution
+        });
+        return;
+      }
+
+      if (lower.includes('ec2') && (lower.includes('region') || lower.includes('by region'))) {
+        const preferredType = isChartRequest && chartType ? chartType : 'bar';
+        showResult(raw, 'EC2 Instances by Region', {
+          chartId, chartType: preferredType, chartData: DEMO.ec2ByRegion, chartLabel: 'Instances'
+        });
+        return;
+      }
+
+      if (lower.includes('rds') && (lower.includes('owner') || lower.includes('engine'))) {
+        const rows = DEMO.rdsByOwnerEngine.map(r =>
+          `<tr><td>${r.owner}</td><td>${r.engine}</td><td>${r.count}</td></tr>`
+        ).join('');
+        showResult(raw, 'RDS Instances by Owner & Engine', {
+          tableHtml: `<table class="result-table">
+            <thead><tr><th>Owner</th><th>Engine</th><th>Count</th></tr></thead>
+            <tbody>${rows}</tbody>
+          </table>`
+        });
+        return;
+      }
+
+      if (lower.includes('gcp') && (lower.includes('top') || lower.includes('project'))) {
+        showResult(raw, 'Top GCP Projects by Resource Count', {
+          chartId, chartType: 'bar', chartData: DEMO.topGcpProjects, chartLabel: 'Resources'
+        });
+        return;
+      }
+
+      if (lower.includes('azure') && (lower.includes('sql') || lower.includes('subscription'))) {
+        const rows = DEMO.azureSqlBySub.map(r =>
+          `<tr><td>${r.subscriptionId}</td><td>${r.subscriptionName}</td><td>${r.dbCount}</td><td>${r.tier}</td></tr>`
+        ).join('');
+        showResult(raw, 'Azure SQL DB by Subscription', {
+          tableHtml: `<table class="result-table">
+            <thead><tr><th>Subscription ID</th><th>Name</th><th>DB Count</th><th>Tier</th></tr></thead>
+            <tbody>${rows}</tbody>
+          </table>`
+        });
+        return;
+      }
+
+      if (lower.includes('ecs') && (lower.includes('cluster') || lower.includes('account'))) {
+        const rows = DEMO.ecsClusters.map(r =>
+          `<tr><td>${r.accountId}</td><td>${r.clusterName}</td><td>${r.status}</td><td>${r.services}</td></tr>`
+        ).join('');
+        showResult(raw, 'ECS Clusters by Account and Status', {
+          tableHtml: `<table class="result-table">
+            <thead><tr><th>Account ID</th><th>Cluster Name</th><th>Status</th><th>Services</th></tr></thead>
+            <tbody>${rows}</tbody>
+          </table>`
+        });
+        return;
+      }
+
+      if (lower.includes('rds') && (lower.includes('instance') || lower.includes('size') || lower.includes('all'))) {
+        const rows = DEMO.rdsInstancesFull.map(r =>
+          `<tr><td>${r.instanceId}</td><td>${r.engine}</td><td>${r.version}</td><td>${r.size}</td><td>${r.owner}</td></tr>`
+        ).join('');
+        showResult(raw, 'RDS Instances (Size & Engine)', {
+          tableHtml: `<table class="result-table">
+            <thead><tr><th>Instance ID</th><th>Engine</th><th>Version</th><th>Size</th><th>Owner</th></tr></thead>
+            <tbody>${rows}</tbody>
+          </table>`
+        });
+        return;
+      }
+
+      showResult(raw, 'Query not recognized', {
+        fallback: 'This demo supports the example queries above. Try: AWS accounts (Finance), RDS PostgreSQL versions, resource distribution by platform, EC2 by region, RDS by owner/engine, top GCP projects, Azure SQL by subscription, ECS clusters, all RDS instances with size and engine, or chart visualizations (e.g., "show me the chart for distribution on cloud platform by no. of accounts").'
+      });
+    }
+
+    renderExampleChips();
+    renderHistory();
+
+    sendBtn.addEventListener('click', () => runQuery());
+    queryInput.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' && !e.shiftKey) {
+        e.preventDefault();
+        runQuery();
+      }
+    });
+  </script>
+</body>
+</html>
