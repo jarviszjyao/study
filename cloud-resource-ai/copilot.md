@@ -52,3 +52,10 @@ From now on, follow these development constraints:
 5. Controllers must remain thin.
 
 Confirm you will follow these rules when generating code.
+
+STEP 4 — 验证 Agent 是否真的理解（关键检查）
+
+问一个测试问题：
+
+If I ask "Why is my ECS service unhealthy?",
+describe step-by-step what components are involved BEFORE any code is written
