@@ -59,3 +59,32 @@ STEP 4 — 验证 Agent 是否真的理解（关键检查）
 
 If I ask "Why is my ECS service unhealthy?",
 describe step-by-step what components are involved BEFORE any code is written
+
+STEP 5 — 建立长期 Agent 记忆（隐藏技巧 ⭐）
+
+创建文件：
+
+/docs/agent-context.md
+
+
+内容：
+
+# Agent Context
+
+This repository implements an AI troubleshooting system using
+an orchestrator-centered architecture.
+
+The LLM never directly performs actions.
+All actions are executed through skills.
+
+Sessions represent reasoning continuity, not authentication.
+
+All responses must conform to schemas.
+
+
+然后对 Copilot 说：
+
+Treat agent-context.md as persistent project memory.
+
+
+以后 Agent 每次都会参考它。
