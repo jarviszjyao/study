@@ -1,0 +1,17 @@
+flowchart TD
+
+A[User Input]
+--> B[Load Session]
+
+B --> C[Build Context]
+C --> D[Call LLM]
+
+D --> E{Need Clarification?}
+
+E -- Yes --> F[Ask User Question]
+F --> B
+
+E -- No --> G[Generate Query Spec]
+G --> H[Execute Query]
+H --> I[Format Response]
+I --> J[Update Session]

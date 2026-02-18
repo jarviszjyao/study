@@ -1,0 +1,42 @@
+@startuml flow_activity
+!theme plain
+skinparam backgroundColor #FEFEFE
+skinparam ActivityBackgroundColor #E8F4FD
+skinparam ActivityBorderColor #0D6EFD
+
+title Chat Orchestrator - Decision Flow
+
+start
+
+:User question (EN/CN);
+
+:Select LLM by config\n(bedrock | bedrock_alt | mock);
+
+:Call LLM API\n(question + system schema);
+
+:Parse LLM JSON output;
+
+if (Output type?) then (QuerySpec JSON)
+  :Validate QuerySpec\n(resource, filters, select, limit);
+
+  if (Valid?) then (yes)
+    :Call Query Executor;
+    :Translate Spec → SQL;
+    :Execute on Aurora PostgreSQL;
+    :Format result\n(table / pie / bar / pivot);
+    :Return { decision: "executable", result };
+  else (no)
+    :Return { decision: "unsupported", message };
+  endif
+
+elseif (Clarification)
+  :Return { decision: "clarify", clarification };
+
+else (Unsupported)
+  :Return { decision: "unsupported", message };
+
+endif
+
+stop
+
+@enduml

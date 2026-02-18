@@ -1,0 +1,10 @@
+flowchart TB
+User --> CloudFront
+CloudFront --> APIgw
+APIgw --> LambdaOrchestrator
+LambdaOrchestrator --> StepFunctions
+StepFunctions --> LambdaSkills
+LambdaSkills --> Aurora
+LambdaSkills --> DynamoDB
+LambdaSkills --> OpenSearch
+LambdaSkills --> Bedrock

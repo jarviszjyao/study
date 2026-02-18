@@ -1,0 +1,8 @@
+{
+  "session_id": "string",
+  "intent": "string",
+  "slots": {},
+  "history": [],
+  "query_spec": {},
+  "state": "string"
+}

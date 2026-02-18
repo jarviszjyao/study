@@ -1,0 +1,6 @@
+dataset: aws_resources
+columns:
+  - account_id
+  - region
+  - resource_type
+  - owner_department

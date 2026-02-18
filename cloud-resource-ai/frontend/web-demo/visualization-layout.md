@@ -1,0 +1,1 @@
+Right panel shows charts.

@@ -1,0 +1,45 @@
+
+flowchart LR
+  subgraph Edge[Edge / Demo]
+    User["User Browser / Client"]
+    S3["S3 Static Hosting (Demo UI)"]
+    CDN["CloudFront (optional)"]
+  end
+
+  subgraph AWS[AWS]
+    subgraph VPC[VPC]
+      subgraph Public[Public Subnets]
+        APIGW["API Gateway\n(created by Terraform)"]
+        NAT["NAT Gateway"]
+      end
+      subgraph Private[Private Subnets]
+        OrchLambda["Chat Orchestrator Lambda\n(app layer + lib layer)"]
+        DB["Aurora PostgreSQL\n(Multi-AZ, replicas)"]
+        Secrets["Secrets Manager"]
+        Queue["SQS (Optional)"]
+      end
+      VPCE["VPC Endpoints"]
+    end
+    Observability["CloudWatch / X-Ray"]
+    CICD["CI/CD (GitHub Actions / Pipeline)"]
+  end
+
+  User --> CDN --> S3
+  CDN --> APIGW
+  APIGW --> OrchLambda
+
+  OrchLambda --> DB
+  OrchLambda --> Queue
+  OrchLambda --> Secrets
+  OrchLambda --> VPCE
+
+  APIGW --> Observability
+  OrchLambda --> Observability
+  DB --> Observability
+
+  CICD --> OrchLambda
+  CICD --> ECR["ECR (if containers used)"]
+
+  %% Notes: per README the Query Executor runs inside Lambda (app layer). For heavy queries
+  %% an external Fargate executor can be added and triggered by SQS or Lambda.
+

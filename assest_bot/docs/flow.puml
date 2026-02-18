@@ -1,0 +1,54 @@
+@startuml flow
+!theme plain
+skinparam backgroundColor #FEFEFE
+skinparam sequenceArrowThickness 2
+skinparam responseMessageBelowArrow true
+
+title Cloud Resource AI Query - End-to-End Flow
+
+actor "User" as U
+participant "Web Portal\n(Demo)" as Web
+participant "API Gateway" as GW
+participant "Chat Orchestrator\n(Lambda)" as Orch
+participant "LLM API\n(Bedrock)" as LLM
+participant "Query Executor" as Exec
+participant "Aurora PostgreSQL" as DB
+
+== 1. User asks question ==
+U -> Web : Natural language query\n(EN/CN)
+Web -> GW : POST /query\n{ "question": "..." }
+GW -> Orch : Invoke Lambda
+
+== 2. Orchestrator receives & calls LLM ==
+Orch -> Orch : Receive question
+Orch -> LLM : User question + System schema\n(prompts.py)
+
+== 3. LLM returns Query Spec or Clarification ==
+LLM --> Orch : JSON output:\n- QuerySpec { resource, filters, select... }\n- OR { "decision": "clarify", "message": "..." }\n- OR { "decision": "unsupported", "message": "..." }
+
+alt decision = "clarify"
+    Orch --> GW : { "decision": "clarify", "clarification": {...} }
+    GW --> Web : Response
+    Web --> U : Show clarification, suggestions
+else decision = "unsupported"
+    Orch --> GW : { "decision": "unsupported", "message": "..." }
+    GW --> Web : Response
+    Web --> U : Show unsupported message
+else decision = "executable" (QuerySpec)
+    Orch -> Orch : Validate QuerySpec\n(query_spec.py)
+
+    == 4. Execute query ==
+    Orch -> Exec : QuerySpec
+    Exec -> Exec : Spec → SQL\n(spec_to_sql.py)
+    Exec -> DB : SELECT ... FROM ...
+    DB --> Exec : Rows
+
+    == 5. Format response ==
+    Exec --> Orch : ExecutorResult (columns, rows)
+    Orch -> Orch : Format (table / pie / bar / pivot)\n(formatter.py)
+    Orch --> GW : { "decision": "executable", "result": {...} }
+    GW --> Web : Response
+    Web --> U : Render table / chart
+end
+
+@enduml

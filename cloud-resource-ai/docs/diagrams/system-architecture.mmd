@@ -1,0 +1,7 @@
+flowchart LR
+User --> UI
+UI --> APIGW
+APIGW --> Orchestrator
+Orchestrator --> StepFunctions
+StepFunctions --> Skills
+Skills --> DataLayer

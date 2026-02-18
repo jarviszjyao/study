@@ -1,0 +1,30 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "ChatRequest",
+  "type": "object",
+  "required": ["sessionId", "message"],
+  "properties": {
+    "sessionId": {
+      "type": "string",
+      "description": "Unique session identifier"
+    },
+    "userId": {
+      "type": "string",
+      "description": "Optional user identifier"
+    },
+    "message": {
+      "type": "string",
+      "description": "User natural language input"
+    },
+    "context": {
+      "type": "object",
+      "description": "Optional frontend context payload",
+      "additionalProperties": true
+    },
+    "metadata": {
+      "type": "object",
+      "description": "Client metadata (ui version, timezone, etc)",
+      "additionalProperties": true
+    }
+  }
+}

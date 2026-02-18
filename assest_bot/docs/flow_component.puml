@@ -1,0 +1,53 @@
+@startuml flow_component
+!theme plain
+skinparam backgroundColor #FEFEFE
+skinparam componentStyle rectangle
+
+title Cloud Resource AI Query - Component Architecture
+
+package "External (Other Teams)" {
+  [Web Portal] as Web
+  [API Gateway] as GW
+  [LLM API] as LLM
+  [Aurora PostgreSQL] as DB
+}
+
+package "This Project" {
+  package "Chat Orchestrator Lambda" {
+    [handler] as H
+    [llm_client] as LC
+    [query_spec] as QS
+    [prompts] as P
+    [executor_handler] as EH
+    [spec_to_sql] as STS
+    [db_client] as DC
+    [formatter] as F
+  }
+}
+
+Web --> GW : POST /query
+GW --> H : Invoke
+
+H --> LC : llm_to_spec
+LC --> LLM : Invoke
+LLM --> LC : JSON
+LC --> H : decision, spec
+
+H --> QS : validate
+QS --> H : QuerySpec
+
+H --> EH : execute_query
+EH --> STS : spec_to_sql
+STS --> EH : SQL
+EH --> DC : execute_query_raw
+DC --> DB : SELECT
+DB --> DC : rows
+DC --> EH : ExecutorResult
+EH --> H : ExecutorResult
+
+H --> F : format_response
+F --> H : result
+
+H --> GW : Response
+
+@enduml

@@ -1,0 +1,6 @@
+sequenceDiagram
+User->>Orchestrator: message
+Orchestrator->>LLM: intent prompt
+LLM-->>Orchestrator: intent JSON
+Orchestrator->>Skill: execute
+Skill-->>Orchestrator: result

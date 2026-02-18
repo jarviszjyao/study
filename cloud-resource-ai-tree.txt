@@ -1,0 +1,199 @@
+卷 DATA1 的文件夹 PATH 列表
+卷序列号为 BE3C-9CB3
+D:\MYCODE\STUDY\CLOUD-RESOURCE-AI
+|   ARCHITECTURE.md
+|   file_structure.md
+|   README.md
+|   
++---.github
+|       copilot-instructions.md
+|       
++---contracts
+|   +---chat
+|   |       chat.request.schema.json
+|   |       chat.response.schema.json
+|   |       
+|   +---query
+|   |       queryspec.schema.json
+|   |       
+|   \---visualization
+|           visualization.schema.json
+|           
++---data-models
+|   +---graph
+|   |       resource-relationship-model.md
+|   |       
+|   +---relational
+|   |       cloud_accounts.sql
+|   |       departments.sql
+|   |       ownership.sql
+|   |       projects.sql
+|   |       resources.sql
+|   |       
+|   \---semantic
+|           embedding-strategy.md
+|           vector-index-design.md
+|           
++---docs
+|   +---ai
+|   |       context-assembly.md
+|   |       llm-interaction-model.md
+|   |       prompt-design.md
+|   |       query-spec.md
+|   |       reasoning-flow.md
+|   |       tool-skill-definition.md
+|   |       
+|   +---api
+|   |       chat-api-contract.md
+|   |       query-api-contract.md
+|   |       visualization-response.md
+|   |       
+|   +---architecture
+|   |       agent-orchestrator.md
+|   |       aws-deployment-architecture.md
+|   |       chat-flow.md
+|   |       conversation-state-machine.md
+|   |       security-guardrails.md
+|   |       session-management.md
+|   |       system-overview.md
+|   |       
+|   +---data
+|   |       entity-resolution.md
+|   |       graph-model-design.md
+|   |       metadata-ingestion.md
+|   |       schema-registry.md
+|   |       
+|   +---dev-guide
+|   |       copilot-operating-rules.md
+|   |       copilot-task-prompts.md
+|   |       definition-of-done.md
+|   |       development-strategy.md
+|   |       phase-0-bootstrap.md
+|   |       phase-1-session-layer.md
+|   |       phase-2-orchestrator-skeleton.md
+|   |       phase-3-intent-detection.md
+|   |       phase-4-clarification-loop.md
+|   |       phase-5-query-spec-generation.md
+|   |       phase-6-query-executor.md
+|   |       phase-7-frontend-integration.md
+|   |       phase-8-observability.md
+|   |       phase-9-production-hardening.md
+|   |       project-phases.md
+|   |       
+|   +---diagrams
+|   |       aws-infra-architecture.mmd
+|   |       conversation-state-machine.mmd
+|   |       llm-interaction-flow.mmd
+|   |       orchestrator-internal-flow.mmd
+|   |       query-execution-flow.mmd
+|   |       session-lifecycle.mmd
+|   |       system-architecture.mmd
+|   |       
+|   +---observability
+|   |       llm-observability.md
+|   |       
+|   +---product
+|   |       product-vision.md
+|   |       supported-usecases.md
+|   |       user-personas.md
+|   |       
+|   +---runtime
+|   |       clarification-engine.md
+|   |       error-handling.md
+|   |       orchestrator-runtime.md
+|   |       query-schema-management.md
+|   |       session-model.md
+|   |       tool-registry.md
+|   |       
+|   +---security
+|   |       access-control.md
+|   |       
+|   \---session
+|           session-state-definition.md
+|           
++---frontend
+|   \---web-demo
+|           api-integration.md
+|           chat-flow.md
+|           ui-spec.md
+|           visualization-layout.md
+|           
++---governance
+|       access-control-model.md
+|       audit-logging.md
+|       cost-control.md
+|       data-classification.md
+|       
++---infrastructure
++---prompts
+|       clarification.prompt
+|       intent-detection.prompt
+|       prompt-governance.md
+|       query-planning.prompt
+|       response-formatting.prompt
+|       sql-generation.prompt
+|       
++---schema-registry
+|   |   registry-definition.md
+|   |   
+|   +---examples
+|   |       llm-context-example.json
+|   |       
+|   \---tables
+|           aws_resources.yaml
+|           
++---services
+|   +---chat-orchestrator
+|   |   |   README.md
+|   |   |   
+|   |   +---domain
+|   |   |       intent-model.md
+|   |   |       session-model.md
+|   |   |       slot-definition.md
+|   |   |       
+|   |   +---llm
+|   |   |       context-builder.md
+|   |   |       prompt-contract.md
+|   |   |       response-schema.md
+|   |   |       
+|   |   +---orchestration
+|   |   |       flow-description.md
+|   |   |       state-transitions.md
+|   |   |       
+|   |   +---session
+|   |   |       lifecycle-policy.md
+|   |   |       repository-design.md
+|   |   |       
+|   |   \---tools
+|   |           tool-catalog.md
+|   |           
+|   +---entity-service
+|   |       entity-index-design.md
+|   |       resolution-flow.md
+|   |       
+|   +---prompts
+|   +---query-engine
+|   |       execution-policy.md
+|   |       query-planner.md
+|   |       sql-generation-rules.md
+|   |       
+|   +---skills
+|   |       skill-interface.md
+|   |       
+|   \---visualization-service
+|           chart-spec.md
+|           dashboard-contract.md
+|           
++---session
+|       audit-and-replay.md
+|       session-schema.json
+|       session-state-definition.md
+|       ttl-policy.md
+|       
+\---tests
+    +---conversation-scenarios
+    |       fuzzy-department.md
+    |       
+    \---evaluation
+            llm-evaluation-spec.md
+            

@@ -1,0 +1,78 @@
+
+@startuml infra_architecture
+!theme plain
+skinparam componentStyle rectangle
+
+title Cloud Resource AI Query - Infrastructure Architecture (aligned with README)
+
+package "Edge / Demo" {
+  [User Browser / Client] as User
+  [S3 Static Hosting (Demo UI)] as S3
+  [CloudFront (optional)] as CDN
+}
+
+package "AWS" {
+  rectangle VPC {
+    package "Public Subnets" {
+      [API Gateway (created by Terraform)] as APIGW
+      [NAT Gateway] as NAT
+    }
+
+    package "Private Subnets" {
+      [Chat Orchestrator Lambda\n(app layer + lib layer)] as OrchLambda
+      [Aurora PostgreSQL (Primary/Replica)] as DB
+      [Secrets Manager] as Secrets
+      [SQS (Optional Async Queue)] as Queue
+    }
+
+    [VPC Endpoints (S3, Secrets Manager, RDS)] as VPCE
+  }
+
+  [CloudWatch / X-Ray] as Observability
+  [IAM] as IAM
+  [ECR / Container Registry] as ECR
+  [CI/CD (GitHub Actions / Pipeline)] as CICD
+}
+
+User --> CDN
+CDN --> S3
+CDN --> APIGW
+
+' API Gateway is assumed created/configured externally via Terraform
+APIGW --> OrchLambda
+
+' Query Executor per README: executed within the Lambda (app layer).
+' For heavy workloads, optional Executor (Fargate) can be used — see note.
+OrchLambda --> DB : SQL queries (via lib layer pgclient)
+OrchLambda --> Queue : enqueue async jobs (optional)
+OrchLambda --> Secrets
+OrchLambda --> VPCE
+
+APIGW --> Observability
+OrchLambda --> Observability
+DB --> Observability
+
+CICD --> OrchLambda
+CICD --> ECR
+IAM ..> OrchLambda
+IAM ..> APIGW
+
+note right of OrchLambda
+  - Lambda uses two layers per README:
+    * lib layer: DB client (pgclient), shared libs
+    * app layer: this project's code (deployed via pipeline)
+  - Chat Orchestrator validates LLM output and runs Query Executor logic.
+  - External LLM APIs (Bedrock or alternate) are called from Lambda (egress).
+end note
+
+note right of DB
+  - Multi-AZ Aurora PostgreSQL in private subnets
+  - Read replicas for reporting/analytics
+end note
+
+note left of DB
+  - Optional: For heavy/long-running analytical jobs, use ECS/Fargate Query Executor
+  - That executor would be triggered by SQS or invoked by Lambda
+end note
+
+@enduml

@@ -1,0 +1,1 @@
+Frontend calls /chat endpoint.

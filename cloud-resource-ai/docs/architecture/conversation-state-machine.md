@@ -1,0 +1,33 @@
+# Conversation State Machine
+
+## States
+
+START
+INTENT_DETECTED
+ENTITY_RESOLVING
+CLARIFYING
+READY_TO_QUERY
+EXECUTING
+COMPLETED
+
+---
+
+## Transition Rules
+
+START → INTENT_DETECTED
+User input analyzed.
+
+INTENT_DETECTED → ENTITY_RESOLVING
+Entities required.
+
+ENTITY_RESOLVING → CLARIFYING
+Ambiguity detected.
+
+CLARIFYING → READY_TO_QUERY
+All slots resolved.
+
+READY_TO_QUERY → EXECUTING
+Query approved.
+
+EXECUTING → COMPLETED
+Results returned.

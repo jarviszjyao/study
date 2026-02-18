@@ -1,0 +1,26 @@
+{
+  "aws_account": {
+    "table": "aws_accounts",
+    "columns": ["account_id", "account_name", "owner", "department", "region_count"]
+  },
+  "rds_instance": {
+    "table": "rds_instances",
+    "columns": ["instance_id", "engine", "version", "size", "owner", "region"]
+  },
+  "ec2_instance": {
+    "table": "ec2_instances",
+    "columns": ["instance_id", "instance_type", "region", "account_id", "owner"]
+  },
+  "ecs_cluster": {
+    "table": "ecs_clusters",
+    "columns": ["cluster_name", "account_id", "status", "services_count"]
+  },
+  "gcp_project": {
+    "table": "gcp_projects",
+    "columns": ["project_id", "project_name", "resource_count", "owner"]
+  },
+  "azure_subscription": {
+    "table": "azure_subscriptions",
+    "columns": ["subscription_id", "name", "db_count", "tier"]
+  }
+}

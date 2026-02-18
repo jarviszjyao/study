@@ -1,0 +1,6 @@
+Generate SQL ONLY from Query Spec.
+
+Use allowed columns only.
+
+Never invent schema.
+Return SQL only.

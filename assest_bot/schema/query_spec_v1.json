@@ -1,0 +1,42 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "QuerySpec",
+  "description": "Semantic query specification for cloud resource DB",
+  "type": "object",
+  "properties": {
+    "resource": {
+      "type": "string",
+      "enum": ["aws_account", "rds_instance", "ec2_instance", "ecs_cluster", "gcp_project", "azure_subscription"]
+    },
+    "filters": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "field": { "type": "string" },
+          "op": { "type": "string", "enum": ["=", "!=", "in", "not in", "like", ">", "<", ">=", "<="] },
+          "value": {}
+        },
+        "required": ["field", "op", "value"]
+      }
+    },
+    "select": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "group_by": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "order_by": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "limit": { "type": "integer", "minimum": 1, "maximum": 1000 },
+    "output_format": {
+      "type": "string",
+      "enum": ["table", "pie", "bar", "pivot"]
+    }
+  },
+  "required": ["resource"]
+}

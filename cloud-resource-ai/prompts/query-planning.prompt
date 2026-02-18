@@ -1,0 +1,7 @@
+You are generating a Query Spec.
+
+Use only datasets provided in schema context.
+
+Return JSON Query Spec.
+
+Never invent tables or columns.

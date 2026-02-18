@@ -1,0 +1,22 @@
+[project]
+name = "assest-bot"
+version = "0.1.0"
+description = "Cloud Resource AI Query - natural language queries over multi-cloud resources"
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+    "fastapi>=0.104.0",
+    "uvicorn[standard]>=0.24.0",
+    "boto3>=1.34.0",
+    "psycopg2-binary>=2.9.9",
+    "python-dotenv>=1.0.0",
+    "pytest>=7.4.0",
+    "pytest-cov>=4.1.0",
+]
+
+[project.optional-dependencies]
+dev = ["pytest", "pytest-cov"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]
