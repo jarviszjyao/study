@@ -26,3 +26,15 @@ Please do the following:
 
 DO NOT generate code yet.
 Only confirm understanding.
+
+
+STEP 2 — 让 Agent 建立 Workspace Memory
+
+当 Agent 输出总结后，你继续输入：
+
+Now scan the schemas directory and explain how contracts enforce deterministic AI behavior.
+Focus on:
+- queryspec.schema.json
+- chat.request.schema.json
+- chat.response.schema.json
+- visualization.schema.json
