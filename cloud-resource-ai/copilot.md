@@ -38,3 +38,17 @@ Focus on:
 - chat.request.schema.json
 - chat.response.schema.json
 - visualization.schema.json
+
+STEP 3 — 建立“开发规则锁”（90% 人不会做）
+
+接下来输入：
+
+From now on, follow these development constraints:
+
+1. LLM output must always validate against schemas.
+2. Business logic lives ONLY in orchestrator.
+3. Skills are stateless plugins.
+4. Session manager owns conversation memory.
+5. Controllers must remain thin.
+
+Confirm you will follow these rules when generating code.
