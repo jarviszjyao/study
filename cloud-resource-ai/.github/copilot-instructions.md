@@ -235,6 +235,30 @@ formatter/
 /schemas
 /docs
 
+reference file structure：
+
+/lambda/chat-orchestrator
+├── orchestrator.py          # 唯一入口（lambda_handler）
+├── planner/
+│   ├── __init__.py
+│   ├── client.py            # LLM 调用封装（Bedrock/Claude 等）
+│   └── prompt.py            # 系统 Prompt 模板
+├── session/
+│   ├── manager.py           # DynamoDB 会话读写
+│   └── models.py            # Session Pydantic 模型
+├── query/
+│   ├── builder.py           # QuerySpec → SQL（确定性）
+│   ├── executor.py          # 执行 SQL / API 调用
+│   └── validator.py         # QuerySpec schema 校验
+├── formatter/
+│   ├── response.py          # 最终响应格式化
+│   └── visualization.py     # 可视化数据生成（可选）
+├── schemas/
+│   ├── queryspec.py         # Pydantic 模型 + JSON Schema
+│   └── visualization.py
+└── utils/
+    └── context.py           # Context Assembly 核心
+
 Do NOT introduce unrelated frameworks.
 
 # 14. Coding Guidelines
