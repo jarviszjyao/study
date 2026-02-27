@@ -1,0 +1,108 @@
+flowchart TD
+
+%% =========================
+%% ENTRY
+%% =========================
+A[User Request<br/>chat.request.schema.json] --> B[API Gateway]
+B --> C[Chat Orchestrator Lambda]
+
+%% =========================
+%% SESSION LAYER
+%% =========================
+subgraph SESSION MANAGEMENT
+C --> D[Load Session Context<br/>DynamoDB]
+D --> E{Session Exists?}
+
+E -- No --> F[Create New Session]
+E -- Yes --> G[Merge Conversation State]
+
+F --> H[Build Working Memory]
+G --> H
+end
+
+%% =========================
+%% CONTEXT ASSEMBLY
+%% =========================
+subgraph CONTEXT ASSEMBLY
+H --> I[Collect Context Sources]
+
+I --> I1[Recent Chat History]
+I --> I2[Resolved Entities]
+I --> I3[User Constraints]
+I --> I4[Cached Metadata<br/>Departments/Services]
+I --> I5[System Schema Registry]
+
+I1 --> J
+I2 --> J
+I3 --> J
+I4 --> J
+I5 --> J
+
+J[Context Builder<br/>context-assembly.md]
+end
+
+%% =========================
+%% PLANNER (LLM REASONING)
+%% =========================
+subgraph PLANNER STAGE (LLM)
+J --> K[Planner Prompt Construction]
+
+K --> L[LLM Planner Call]
+
+L --> M{Planner Decision}
+
+M -->|Need Clarification| N[Generate Clarifying Question]
+M -->|Query Required| O[Generate QuerySpec]
+M -->|Unsupported| P[Fallback Response]
+end
+
+%% =========================
+%% CLARIFICATION LOOP
+%% =========================
+N --> Q[Response Formatter]
+Q --> R[Return Question to User]
+R --> S[Persist Session Update]
+S --> END1[(End Invocation)]
+
+%% =========================
+%% QUERY EXECUTION
+%% =========================
+subgraph QUERY PIPELINE
+O --> T[Validate QuerySpec<br/>queryspec.schema.json]
+
+T --> U{Valid?}
+U -- No --> V[Planner Repair Loop]
+V --> K
+
+U -- Yes --> W[Query Executor]
+
+W --> W1[SQL Builder]
+W1 --> W2[Execute DB Query<br/>RDS/Athena/API]
+W2 --> W3[Fetch Result Set]
+end
+
+%% =========================
+%% VISUALIZATION + RESPONSE
+%% =========================
+subgraph RESPONSE GENERATION
+W3 --> X[Visualization Planner]
+
+X --> X1[Generate VisualizationSpec<br/>visualization.schema.json]
+
+X1 --> Y[Response Formatter<br/>chat.response.schema.json]
+end
+
+%% =========================
+%% SESSION UPDATE
+%% =========================
+Y --> Z[Update Session Memory]
+
+Z --> Z1[Store Entities]
+Z --> Z2[Store Query Context]
+Z --> Z3[Trim Conversation Window]
+
+Z3 --> AA[Persist DynamoDB Session]
+
+AA --> AB[Return Final Response]
+
+AB --> END2[(End Invocation)]
