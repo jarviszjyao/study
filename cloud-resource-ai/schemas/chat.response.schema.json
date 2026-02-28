@@ -1,0 +1,11 @@
+{
+  "type": "object",
+  "required": ["message"],
+  "properties": {
+    "message": { "type": "string" },
+    "data": { "type": "array" },
+    "visualization": {
+      "$ref": "visualization.schema.json"
+    }
+  }
+}
