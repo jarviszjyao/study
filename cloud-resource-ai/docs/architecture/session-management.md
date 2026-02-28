@@ -1,60 +1,56 @@
-# Session Management Design
+# Session Management
 
-## What is a Session
+A session represents a continuous conversational context
+between a user and the system.
 
-A session represents a continuous reasoning context
-between a user and the AI assistant.
+---
 
-It is NOT a websocket or login session.
+## Session Definition
 
-It is an AI reasoning state container.
+A session is identified by:
+
+session_id (UUID)
+
+Stored in DynamoDB.
 
 ---
 
 ## Session Responsibilities
 
-- Maintain conversation memory
-- Store inferred intent
-- Track missing parameters
-- Preserve entity candidates
-- Enable multi-turn clarification
+Session stores:
+
+- recent messages
+- resolved entities
+- clarification state
+- last QuerySpec
+- timestamps
 
 ---
 
-## Session Lifecycle
+## Lifecycle
 
-1. CREATED
-2. ACTIVE
-3. CLARIFYING
-4. READY_TO_QUERY
-5. COMPLETED
-6. EXPIRED
+Create → Active → Idle → Expired (TTL)
+
+TTL recommended: 30–60 minutes.
 
 ---
 
-## Storage
+## Why Session Exists
 
-Stored in DynamoDB.
+Lambda is stateless.
 
-Primary Key:
-session_id
+Session provides:
 
-TTL:
-30 minutes default.
+- conversational continuity
+- incremental query refinement
+- ambiguity resolution
 
 ---
 
-## Session Object
+## Session Update Rules
 
-```json
-{
-  "session_id": "uuid",
-  "user_id": "user123",
-  "state": "CLARIFYING",
-  "intent": "list_accounts",
-  "slots": {},
-  "missing_slots": ["department"],
-  "entity_candidates": [],
-  "conversation_summary": "",
-  "last_updated": ""
-}
+Lambda MUST update session:
+
+- after planner decision
+- after query execution
+- after clarification response
