@@ -1,0 +1,11 @@
+{
+  "type": "object",
+  "properties": {
+    "type": {
+      "enum": ["table", "bar", "pie", "line"]
+    },
+    "title": { "type": "string" },
+    "x_field": { "type": "string" },
+    "y_field": { "type": "string" }
+  }
+}
