@@ -2,49 +2,61 @@ flowchart TD
 
 User[User Natural Language Query]
 
-User
-    --> APIGW[API Gateway]
+User --> APIGW[API Gateway]
 
-APIGW
-    --> Orchestrator[Lambda Query Orchestrator]
+APIGW --> Orchestrator[Query Orchestrator]
 
-Orchestrator
-    --> DomainSelector[Domain Selector]
+Orchestrator --> DomainSelector[Domain Selector]
 
-DomainSelector
-    --> DomainRegistry[Domain Registry]
+DomainSelector --> DomainRegistry[Domain Registry]
 
-DomainRegistry
-    --> CloudDomain[Cloud Resources Domain]
-DomainRegistry
-    --> ApiDomain[API Inventory Domain]
-DomainRegistry
-    --> ChangeDomain[Change Logs Domain]
+DomainRegistry --> CloudDomain[Cloud Resources Domain]
+DomainRegistry --> ApiDomain[API Inventory Domain]
+DomainRegistry --> ChangeDomain[Change Logs Domain]
 
-CloudDomain --> CloudCatalog[Dataset Catalog]
-ApiDomain --> ApiCatalog[Dataset Catalog]
-ChangeDomain --> ChangeCatalog[Dataset Catalog]
+CloudDomain --> Catalog1[Dataset Catalog]
+ApiDomain --> Catalog2[Dataset Catalog]
+ChangeDomain --> Catalog3[Dataset Catalog]
 
-CloudCatalog --> Planner
-ApiCatalog --> Planner
-ChangeCatalog --> Planner
+Catalog1 --> ContextBuilder
+Catalog2 --> ContextBuilder
+Catalog3 --> ContextBuilder
+
+ContextBuilder --> VectorSearch[Vector Search / Semantic Retrieval]
+
+VectorSearch --> EntityResolver[Entity Resolver]
+
+EntityResolver --> Planner
 
 Planner[LLM Planner NL → QuerySpec]
 
 Planner --> Validator[QuerySpec Validator]
 
-Validator --> Resolver[Dataset Resolver]
+Validator --> CostGuard[Query Cost Guardrail]
+
+CostGuard --> Resolver[Dataset Resolver]
 
 Resolver --> SQLBuilder[SQL Builder AST]
 
-SQLBuilder --> CloudDB[(Cloud Resource DB)]
-SQLBuilder --> ApiDB[(API Inventory DB)]
-SQLBuilder --> ChangeDB[(Change Logs DB)]
+SQLBuilder --> CacheCheck{Query Cache}
 
-CloudDB --> Formatter
-ApiDB --> Formatter
-ChangeDB --> Formatter
+CacheCheck -->|Hit| Formatter
+CacheCheck -->|Miss| DBExec
+
+DBExec --> CloudDB[(Cloud Resource DB)]
+DBExec --> ApiDB[(API Inventory DB)]
+DBExec --> ChangeDB[(Change Logs DB)]
+
+CloudDB --> CacheStore[Cache Result]
+ApiDB --> CacheStore
+ChangeDB --> CacheStore
+
+CacheStore --> Formatter
 
 Formatter[Response Formatter]
 
 Formatter --> Response[User Response]
+
+Orchestrator --> Observability[Logs / Metrics / Audit]
+
+Observability --> Monitoring[(Monitoring System)]
