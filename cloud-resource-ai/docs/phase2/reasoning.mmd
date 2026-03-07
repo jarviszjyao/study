@@ -1,54 +1,37 @@
 flowchart TD
 
-User[User Natural Language Question]
+User[User Question]
 
-User
-    → APIGW[API Gateway]
+User --> NLParse[Natural Language Input]
 
-APIGW
-    → Orchestrator[Lambda Chat Orchestrator]
+NLParse --> EntityDetect[Entity Detection]
 
-Orchestrator
-    → Session[DynamoDB Session Store]
+EntityDetect --> EntityResolver[Entity Resolver]
 
-Orchestrator
-    → ContextBuilder[Context Builder]
+EntityResolver --> ContextBuilder[Context Builder]
 
-ContextBuilder
-    → DatasetCatalog[Dataset Catalog Loader]
+ContextBuilder --> SemanticRetrieval[Semantic Retrieval<br>Vector Search]
 
-DatasetCatalog
-    → Planner
+SemanticRetrieval --> Planner
 
-ContextBuilder
-    → Planner[LLM Planner]
+Planner[LLM Planner<br>NL → QuerySpec]
 
-Planner
-    → QuerySpec[QuerySpec JSON]
+Planner --> QuerySpec[Structured QuerySpec]
 
-QuerySpec
-    → Validator[QuerySpec Validator]
+QuerySpec --> Validator[QuerySpec Validator]
 
-Validator
-    → Resolver[Dataset Resolver]
+Validator --> CostGuard[Query Cost Guardrail]
 
-Resolver
-    → SQLBuilder[SQL Builder AST]
+CostGuard --> DatasetResolver[Dataset Resolver]
 
-SQLBuilder
-    → DB[(Aurora PostgreSQL Read Replica)]
+DatasetResolver --> SQLBuilder[SQL Builder AST]
 
-DB
-    → Formatter[Response Formatter]
+SQLBuilder --> SQL[Deterministic SQL]
 
-Formatter
-    → Response[Final Response]
+SQL --> Database[(Database Execution)]
 
-Response
-    → Orchestrator
+Database --> Result[Query Result]
 
-Orchestrator
-    → SaveSession[Update Session]
+Result --> Formatter[Response Formatter]
 
-SaveSession
-    → UserResponse[Return to User]
+Formatter --> Response[User Answer]
