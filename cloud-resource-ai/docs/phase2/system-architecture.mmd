@@ -1,42 +1,50 @@
 flowchart TD
 
-User[User Question]
+User[User Natural Language Query]
 
 User
-   → APIGW[API Gateway]
+    --> APIGW[API Gateway]
 
 APIGW
-   → Lambda[Lambda Orchestrator]
+    --> Orchestrator[Lambda Query Orchestrator]
 
-Lambda
-   → Session[DynamoDB Session Store]
+Orchestrator
+    --> DomainSelector[Domain Selector]
 
-Lambda
-   → Catalog[Data Catalog Loader]
+DomainSelector
+    --> DomainRegistry[Domain Registry]
 
-Catalog
-   → Planner
+DomainRegistry
+    --> CloudDomain[Cloud Resources Domain]
+DomainRegistry
+    --> ApiDomain[API Inventory Domain]
+DomainRegistry
+    --> ChangeDomain[Change Logs Domain]
 
-Lambda
-   → Planner[LLM Planner]
+CloudDomain --> CloudCatalog[Dataset Catalog]
+ApiDomain --> ApiCatalog[Dataset Catalog]
+ChangeDomain --> ChangeCatalog[Dataset Catalog]
 
-Planner
-   → QuerySpec[QuerySpec JSON]
+CloudCatalog --> Planner
+ApiCatalog --> Planner
+ChangeCatalog --> Planner
 
-QuerySpec
-   → Validator[QuerySpec Validator]
+Planner[LLM Planner NL → QuerySpec]
 
-Validator
-   → Resolver[Dataset Resolver]
+Planner --> Validator[QuerySpec Validator]
 
-Resolver
-   → SQLBuilder[SQL Builder AST]
+Validator --> Resolver[Dataset Resolver]
 
-SQLBuilder
-   → DB[(Aurora PostgreSQL)]
+Resolver --> SQLBuilder[SQL Builder AST]
 
-DB
-   → Formatter[Response Formatter]
+SQLBuilder --> CloudDB[(Cloud Resource DB)]
+SQLBuilder --> ApiDB[(API Inventory DB)]
+SQLBuilder --> ChangeDB[(Change Logs DB)]
 
-Formatter
-   → Response[User Response]
+CloudDB --> Formatter
+ApiDB --> Formatter
+ChangeDB --> Formatter
+
+Formatter[Response Formatter]
+
+Formatter --> Response[User Response]
