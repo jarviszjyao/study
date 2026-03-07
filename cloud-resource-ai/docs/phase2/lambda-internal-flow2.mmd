@@ -1,39 +1,43 @@
 flowchart TD
 
-Start([API Request])
+Start([API Request Received])
 
-Start
-   → LoadSession
+Start --> ParseRequest[Parse Request<br>question + domain]
 
-LoadSession
-   → LoadDatasetCatalog
+ParseRequest --> LoadDomain[Load Domain Config]
 
-LoadDatasetCatalog
-   → BuildPromptContext
+LoadDomain --> LoadCatalog[Load Dataset Catalog]
 
-BuildPromptContext
-   → CallPlanner
+LoadCatalog --> BuildContext[Build Prompt Context]
 
-CallPlanner
-   → QuerySpec
+BuildContext --> SemanticRetrieval[Semantic Retrieval<br>Vector Search]
 
-QuerySpec
-   → ValidateQuerySpec
+SemanticRetrieval --> CallPlanner[Call LLM Planner]
 
-ValidateQuerySpec
-   → ResolveDataset
+CallPlanner --> QuerySpec[Generate QuerySpec]
 
-ResolveDataset
-   → BuildSQL
+QuerySpec --> ValidateSpec{QuerySpec Valid?}
 
-BuildSQL
-   → ExecuteSQL
+ValidateSpec -->|No| Clarify[Return Clarification]
 
-ExecuteSQL
-   → FormatResult
+ValidateSpec -->|Yes| CostGuard[Query Cost Guardrail]
 
-FormatResult
-   → SaveSession
+CostGuard --> ResolveDataset[Dataset Resolver]
 
-SaveSession
-   → ReturnResponse([Return to User])
+ResolveDataset --> BuildSQL[SQL Builder]
+
+BuildSQL --> CacheCheck{Cache Hit?}
+
+CacheCheck -->|Yes| LoadCache[Return Cached Result]
+
+CacheCheck -->|No| ExecuteSQL[Execute SQL Query]
+
+ExecuteSQL --> StoreCache[Store Result in Cache]
+
+StoreCache --> FormatResult[Format Response]
+
+LoadCache --> FormatResult
+
+FormatResult --> UpdateSession[Update Session Memory]
+
+UpdateSession --> ReturnResponse([Return Response to User])
