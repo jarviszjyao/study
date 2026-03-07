@@ -1,0 +1,39 @@
+flowchart TD
+
+Start([API Request])
+
+Start
+   → LoadSession
+
+LoadSession
+   → LoadDatasetCatalog
+
+LoadDatasetCatalog
+   → BuildPromptContext
+
+BuildPromptContext
+   → CallPlanner
+
+CallPlanner
+   → QuerySpec
+
+QuerySpec
+   → ValidateQuerySpec
+
+ValidateQuerySpec
+   → ResolveDataset
+
+ResolveDataset
+   → BuildSQL
+
+BuildSQL
+   → ExecuteSQL
+
+ExecuteSQL
+   → FormatResult
+
+FormatResult
+   → SaveSession
+
+SaveSession
+   → ReturnResponse([Return to User])
