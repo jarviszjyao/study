@@ -1,0 +1,42 @@
+flowchart TD
+
+User[User Question]
+
+User
+   → APIGW[API Gateway]
+
+APIGW
+   → Lambda[Lambda Orchestrator]
+
+Lambda
+   → Session[DynamoDB Session Store]
+
+Lambda
+   → Catalog[Data Catalog Loader]
+
+Catalog
+   → Planner
+
+Lambda
+   → Planner[LLM Planner]
+
+Planner
+   → QuerySpec[QuerySpec JSON]
+
+QuerySpec
+   → Validator[QuerySpec Validator]
+
+Validator
+   → Resolver[Dataset Resolver]
+
+Resolver
+   → SQLBuilder[SQL Builder AST]
+
+SQLBuilder
+   → DB[(Aurora PostgreSQL)]
+
+DB
+   → Formatter[Response Formatter]
+
+Formatter
+   → Response[User Response]
