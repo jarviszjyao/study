@@ -1,316 +1,572 @@
-# Copilot Development Instructions
-## Cloud Resource Conversational Query System
+# AI Semantic Query Engine – Copilot Development Instructions
 
-This repository implements a **Planner-Driven Conversational Query Platform**
-running on AWS (Lambda + API Gateway + DynamoDB + LLM).
+This repository implements an **AI Semantic Query Engine** that allows users to query enterprise metadata using natural language.
 
-Copilot MUST follow this document when generating or modifying code.
+The system converts natural language questions into **structured query plans (QuerySpec)** which are then executed deterministically against a database.
+
+The architecture is intentionally designed for:
+
+- enterprise safety
+- deterministic execution
+- schema stability
+- controlled AI usage
+
+Copilot must follow the design principles and rules defined in this document when generating or modifying code.
 
 ---
 
-# 1. System Purpose
+# 1 Core Design Principle
 
-The system allows users to query cloud resources using natural language:
+This system is NOT a direct NL-to-SQL generator.
+
+The architecture strictly separates:
+
+LLM reasoning  
+and  
+deterministic execution
+
+Pipeline:
+
+Natural Language  
+→ QuerySpec (LLM output)  
+→ SQL Builder (code)  
+→ Database execution
+
+LLMs are only used for **intent understanding and query planning**.
+
+All database interaction must be implemented using deterministic code.
+
+---
+
+# 2 System Architecture Overview
+
+The runtime system runs primarily as an **AWS Lambda Query Engine**.
+
+High-level request flow:
+
+User  
+→ API Gateway  
+→ Lambda Query Runtime  
+→ LLM Planner  
+→ QuerySpec  
+→ QuerySpec Validator  
+→ Dataset Resolver  
+→ SQL Builder  
+→ Database  
+→ Response Formatter
+
+The LLM must never directly generate SQL.
+
+---
+
+# 3 Runtime Query Pipeline
+
+The runtime query engine must follow this pipeline order:
+
+1 Parse API request
+
+Extract:
+
+- domain
+- user question
+- session id (optional)
+
+2 Load domain configuration
+
+Each domain defines:
+
+- database connection
+- dataset catalog location
+- vector index configuration
+- query limits
+
+3 Load dataset catalog
+
+Dataset catalog contains semantic dataset definitions.
+
+Datasets represent logical data sources.
+
+Datasets are NOT database tables.
+
+4 Retrieve relevant datasets
+
+If many datasets exist, use semantic retrieval to select a small subset.
+
+Dataset retrieval may use embeddings and vector search.
+
+5 Build planner prompt context
+
+Planner context includes:
+
+- user question
+- candidate datasets
+- dataset descriptions
+- dataset fields
+- example queries
+
+6 Call LLM planner
+
+The LLM converts the question into a structured QuerySpec.
+
+7 Validate QuerySpec
+
+The validator checks:
+
+- dataset exists
+- selected fields exist
+- filter fields exist
+- limit constraints
+- allowed operators
+
+8 Resolve dataset
+
+Map logical dataset → physical tables and joins.
+
+9 Generate SQL
+
+SQL must be generated using a deterministic SQL builder.
+
+10 Execute query
+
+Queries must use read-only database connections.
+
+11 Format response
+
+Results are returned as structured JSON or tables.
+
+---
+
+# 4 QuerySpec Specification
+
+The LLM must produce QuerySpec JSON.
 
 Example:
 
-User input:
-> "list all services in payments department"
-
-System output:
-- structured resource list
-- optional visualization data
-
-The system DOES NOT behave like a chatbot.
-
-It is a:
-
-> LLM Planning + Deterministic Execution Architecture
-
----
-
-# 2. Core Architectural Principle (CRITICAL)
-
-Natural Language → Planner → QuerySpec → SQL → Data → Response
-
-LLM NEVER generates SQL directly.
-
-Instead:
-
-1. LLM acts as a **Planner**
-2. Planner produces a structured QuerySpec
-3. Backend builds SQL deterministically
-
-This rule MUST NEVER be violated.
-
----
-
-# 3. High-Level Architecture
-
-Web Client
-    ↓
-API Gateway
-    ↓
-Chat Orchestrator Lambda
-    ↓
-LLM Planner
-    ↓
-QuerySpec Generator
-    ↓
-Query Executor (DB/API)
-    ↓
-Response Formatter
-    ↓
-User
-
-Detailed flow:
-docs/architecture/lambda-internal-flow.md
-
----
-
-# 4. Lambda Role
-
-Chat Orchestrator Lambda is:
-
-- stateless execution unit
-- session-aware via DynamoDB
-- responsible for orchestration ONLY
-
-It is NOT:
-
-- a long-running agent
-- a memory container
-- a database logic layer
-
----
-
-# 5. Session Model (MANDATORY)
-
-Sessions are persisted in DynamoDB.
-
-Lambda MUST:
-
-1. Load session at invocation start
-2. Build working context
-3. Update session before returning response
-
-Session contains:
-
-- conversation history (short window)
-- resolved entities
-- clarification state
-- previous query context
-
-Reference:
-docs/architecture/session-management.md
-
----
-
-# 6. Planner-Based Reasoning (NO INTENT SYSTEM)
-
-This project DOES NOT use classic intent detection.
-
-Copilot MUST NOT introduce:
-
-- intent classifiers
-- intent routing tables
-- intent handlers
-
-Instead:
-
-Planner decides action dynamically:
-
-Possible planner outputs:
-
-- clarification_required
-- execute_query
-- unsupported_request
-
-Planner specification:
-docs/architecture/reasoning-model.md
-
----
-
-# 7. QuerySpec Contract (STRICT)
-
-LLM outputs QuerySpec JSON only.
-
-Schema:
-schemas/queryspec.schema.json
-
-Example:
-
-```json
 {
   "dataset": "services",
-  "filters": {
-    "department": "payments"
-  },
-  "fields": ["service_name", "region"]
+  "select": ["service_name", "department"],
+  "filters": [
+    {
+      "field": "department",
+      "operator": "=",
+      "value": "finance"
+    }
+  ],
+  "limit": 100
 }
 
-Rules:
-	•	NEVER embed SQL in LLM output
-	•	ALWAYS validate against schema
-	•	SQL must be generated by backend builder
+QuerySpec rules:
 
-# 8. Context Assembly
+- dataset must exist
+- fields must exist
+- limit must not exceed system limits
+- operators must be allowed
 
-Before calling the LLM planner, Lambda MUST assemble context from:
-	•	session history
-	•	known entities
-	•	metadata cache
-	•	schema registry
+Allowed operators include:
 
-Specification:
-docs/architecture/context-assembly.md
+=  
+!=  
+IN  
+LIKE  
+>  
+<
 
-Copilot SHOULD create reusable context builder modules.
+SQL fragments are not allowed.
 
-# 9. LLM Interaction Rules
+---
 
-LLM is used ONLY for:
-	•	reasoning
-	•	planning
-	•	clarification generation
+# 5 Dataset Concept
 
-LLM is NOT used for:
-	•	database execution
-	•	validation logic
-	•	authorization
-	•	schema enforcement
+Datasets represent semantic data sources.
 
-All LLM outputs must be validated.
+A dataset maps to one or more database tables.
 
-# 10. Clarification Loop (VERY IMPORTANT)
+Example dataset definition:
 
-If user input lacks required parameters:
+dataset: services
+
+table: service_catalog
+
+description: internal platform services deployed in cloud environments
+
+fields:
+
+service_name  
+department  
+owner
+
+Datasets may also include:
+
+- description
+- keywords
+- field descriptions
+- example queries
+
+Datasets are stored in a **dataset catalog**.
+
+---
+
+# 6 Dataset Routing
+
+The system may contain many datasets.
+
+The planner must select the correct dataset for a user query.
+
+Dataset routing uses:
+
+- semantic embeddings
+- dataset descriptions
+- keywords
+- example queries
+
+Only a small subset of datasets should be provided to the LLM planner.
+
+This improves:
+
+- accuracy
+- prompt size
+- performance
+
+The runtime may use vector search to retrieve the top relevant datasets.
+
+---
+
+# 7 Dataset Catalog
+
+Dataset definitions are stored in a dataset catalog.
+
+Example structure:
+
+catalog/
+
+cloud_resources/
+services.yaml
+resources.yaml
+accounts.yaml
+
+api_inventory/
+apis.yaml
+api_owners.yaml
+
+The runtime loads dataset definitions from this catalog.
+
+Dataset catalog files contain metadata only.
+
+They do not contain real business data.
+
+---
+
+# 8 Metadata Discovery and Dataset Auto-Discovery
+
+Dataset catalogs may be generated automatically using a **metadata discovery pipeline**.
+
+Metadata discovery scans database schemas and generates dataset definitions.
+
+Discovery steps may include:
+
+- scanning database tables
+- extracting column metadata
+- generating dataset descriptions
+- generating keywords
+- generating example queries
+- generating dataset embeddings
+
+Important rule:
+
+Metadata discovery is an **offline process**.
+
+It must never run during query execution.
+
+Runtime query engines must only read the generated dataset catalog.
+
+Discovery may run using a separate service such as:
+
+services/metadata-discovery
+
+Possible triggers include:
+
+- scheduled Lambda jobs
+- CI/CD pipelines
+- manual admin triggers
+
+Discovery outputs dataset files into the catalog directory.
 
 Example:
 
-“list services”
+catalog/cloud_resources/services.yaml
 
-Planner must request clarification instead of guessing.
+The runtime query engine loads these files during query execution.
 
-Flow:
+---
 
-Planner → clarification question → user reply → planner resumes.
+# 9 Deterministic SQL Generation
 
-This is a multi-turn reasoning loop.
+SQL must be generated by a dedicated SQL builder module.
 
-# 11. Visualization Pipeline
+The LLM must never generate SQL.
 
-Visualization is optional and generated AFTER query execution.
+SQL builder responsibilities:
 
-Schema:
-schemas/visualization.schema.json
+- map dataset fields to table columns
+- construct SELECT statements
+- apply filters
+- apply limits
+- bind parameters safely
 
-Visualization is derived from result data,
-NOT directly from user input.
+Example SQL:
 
-# 12. Error Handling Principles
+SELECT service_name, department
+FROM service_catalog
+WHERE department = :department
+LIMIT 100
 
-System must gracefully recover from:
-	•	invalid planner output
-	•	schema mismatch
-	•	empty query results
-	•	ambiguous user input
+The SQL builder must prevent:
 
-Reference:
-docs/architecture/error-handling.md
+- SQL injection
+- schema mismatch
+- uncontrolled joins
 
-Never expose internal errors to users.
+---
 
-# 13. Repository Structure Expectations
+# 10 Query Guardrails
 
-Copilot MUST respect repository boundaries:
+The runtime must enforce query safety.
 
-/lambda/chat-orchestrator
-orchestrator.py
-planner/
-session/
-query/
-formatter/
+Guardrails include:
 
-/schemas
-/docs
+Row limits
 
-reference file structure：
+Queries must enforce a maximum row count.
 
-/lambda/chat-orchestrator
-├── orchestrator.py          # 唯一入口（lambda_handler）
-├── planner/
-│   ├── __init__.py
-│   ├── client.py            # LLM 调用封装（Bedrock/Claude 等）
-│   └── prompt.py            # 系统 Prompt 模板
-├── session/
-│   ├── manager.py           # DynamoDB 会话读写
-│   └── models.py            # Session Pydantic 模型
-├── query/
-│   ├── builder.py           # QuerySpec → SQL（确定性）
-│   ├── executor.py          # 执行 SQL / API 调用
-│   └── validator.py         # QuerySpec schema 校验
-├── formatter/
-│   ├── response.py          # 最终响应格式化
-│   └── visualization.py     # 可视化数据生成（可选）
-├── schemas/
-│   ├── queryspec.py         # Pydantic 模型 + JSON Schema
-│   └── visualization.py
-└── utils/
-    └── context.py           # Context Assembly 核心
+Query timeout
 
-Do NOT introduce unrelated frameworks.
+Database queries must have execution time limits.
 
-# 14. Coding Guidelines
+Operator restrictions
 
-Preferred language:
-Python (AWS Lambda runtime)
+Only approved filter operators are allowed.
 
-Requirements:
-	•	small composable modules
-	•	explicit typing where possible
-	•	schema-first validation
-	•	deterministic execution paths
+Dataset restrictions
 
-Avoid:
-	•	hidden magic logic
-	•	implicit state
-	•	long monolithic handlers
+Only datasets defined in the catalog may be queried.
 
-# 15. Development Philosophy
+---
 
-This project follows:
+# 11 Security and Compliance
 
-Document → Architecture → Schema → Implementation
+The system is designed to protect enterprise data.
 
-NOT:
+LLMs must never receive:
 
-Code-first experimentation.
+- raw database rows
+- sensitive business data
+- customer information
 
-Copilot MUST always consult docs/ before generating logic.
+LLM context may only include:
 
-# 16. What Copilot SHOULD Optimize For
+- dataset metadata
+- dataset descriptions
+- field definitions
+- example queries
 
-✅ determinism
-✅ observability
-✅ explainability
-✅ schema validation
-✅ modular orchestration
+Database access must be:
 
-NOT:
+- read-only
+- restricted by IAM
+- protected with query limits
 
-❌ clever shortcuts
-❌ direct SQL generation
-❌ chatbot-style responses
+---
 
-# 17. Mental Model Copilot Must Assume
+# 12 Multi-Domain Architecture
 
-This system is closer to:
+The system supports multiple data domains.
 
-“Data Query Operating System”
+Examples:
 
-NOT:
+cloud_resources  
+api_inventory  
+change_logs  
+security_findings
 
-“Chatbot”
+Each domain may have:
 
-END OF INSTRUCTIONS
+- separate database
+- separate dataset catalog
+- separate vector index
+
+Example API request:
+
+{
+  "domain": "cloud_resources",
+  "question": "list all services"
+}
+
+The runtime must load domain configuration dynamically.
+
+---
+
+# 13 Observability
+
+The runtime should log:
+
+request id  
+user question  
+selected dataset  
+generated QuerySpec  
+generated SQL  
+query execution time
+
+Logs must never contain sensitive data.
+
+Observability helps with:
+
+- debugging
+- performance tuning
+- query auditing
+
+---
+
+# 14 Repository Structure
+
+Typical repository layout:
+
+core/
+
+shared query engine modules
+
+services/query-runtime/
+
+Lambda runtime
+
+services/metadata-discovery/
+
+metadata discovery pipeline
+
+domains/
+
+domain-specific dataset definitions
+
+catalog/
+
+generated dataset metadata
+
+infra/
+
+infrastructure definitions
+
+tests/
+
+query and planner test cases
+
+---
+
+# 15 Coding Guidelines
+
+When generating code, Copilot must follow these principles:
+
+Keep modules small and focused.
+
+Separate components clearly:
+
+planner  
+validator  
+dataset resolver  
+sql builder  
+query executor
+
+Avoid tightly coupled modules.
+
+Use clear interfaces between components.
+
+Prefer dependency injection where possible.
+
+---
+
+# 16 Error Handling
+
+The system must gracefully handle invalid queries.
+
+Common errors include:
+
+unknown dataset  
+unknown field  
+invalid filter  
+invalid QuerySpec
+
+Errors should return structured responses.
+
+Example:
+
+{
+  "error": "unknown_dataset",
+  "message": "Dataset 'applications' does not exist"
+}
+
+---
+
+# 17 Prompt Context Construction
+
+Planner prompts must remain compact.
+
+The runtime should avoid passing all datasets to the LLM.
+
+Instead:
+
+1 perform dataset retrieval  
+2 select the most relevant datasets  
+3 build prompt context using those datasets
+
+This prevents prompt size explosion and improves LLM accuracy.
+
+---
+
+# 18 Future Extensions
+
+The architecture is designed to support future capabilities:
+
+semantic dataset discovery  
+vector-based dataset routing  
+cross-dataset queries  
+visualization generation  
+conversational query sessions
+
+Copilot should avoid generating code that prevents these extensions.
+
+---
+
+# 19 Copilot Behavioral Rules
+
+When generating or modifying code, Copilot must follow these rules:
+
+Never generate SQL directly from natural language.
+
+Always use the QuerySpec pipeline.
+
+Never bypass the QuerySpec validator.
+
+Never scan database schemas during runtime queries.
+
+Never expose database credentials.
+
+Never send real data to LLMs.
+
+Respect the separation between:
+
+LLM reasoning  
+and  
+deterministic execution.
+
+---
+
+# 20 Final Design Principle
+
+This system follows a strict design philosophy:
+
+LLM for reasoning  
+Code for execution
+
+LLMs generate query plans.
+
+The application executes those plans deterministically.
+
+This separation must always be preserved.
