@@ -1,0 +1,5 @@
+{"id":"I160","name":"姚轶韬","gender":"male","fid":["I77"],"mid":"I159","pids":["A2"],"gid":"30","birth":"1999-10-18","death":"","occupation":"","remark":"","sibling_rank":"1"}
+
+{"id":"A1","name":"姚轶韬","gender":"male","fid":["I77"],"mid":"I159","pids":["A2"],"gid":"30","birth":"1999-10-18","death":"","occupation":"","remark":"","sibling_rank":""}
+
+{"id":"A2","name":"杨薪静","gender":"female","fid":[],"mid":"","pids":["I160"],"gid":"","birth":"1997-03-05","death":"","occupation":"","remark":"","sibling_rank":""}
