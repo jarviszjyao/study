@@ -1,0 +1,43 @@
+flowchart TD
+
+Start([API Request Received])
+
+Start --> ParseRequest[Parse Request<br>question + domain]
+
+ParseRequest --> LoadDomain[Load Domain Config]
+
+LoadDomain --> LoadCatalog[Load Dataset Catalog]
+
+LoadCatalog --> BuildContext[Build Prompt Context]
+
+BuildContext --> SemanticRetrieval[Semantic Retrieval<br>Vector Search]
+
+SemanticRetrieval --> CallPlanner[Call LLM Planner]
+
+CallPlanner --> QuerySpec[Generate QuerySpec]
+
+QuerySpec --> ValidateSpec{QuerySpec Valid?}
+
+ValidateSpec -->|No| Clarify[Return Clarification]
+
+ValidateSpec -->|Yes| CostGuard[Query Cost Guardrail]
+
+CostGuard --> ResolveDataset[Dataset Resolver]
+
+ResolveDataset --> BuildSQL[SQL Builder]
+
+BuildSQL --> CacheCheck{Cache Hit?}
+
+CacheCheck -->|Yes| LoadCache[Return Cached Result]
+
+CacheCheck -->|No| ExecuteSQL[Execute SQL Query]
+
+ExecuteSQL --> StoreCache[Store Result in Cache]
+
+StoreCache --> FormatResult[Format Response]
+
+LoadCache --> FormatResult
+
+FormatResult --> UpdateSession[Update Session Memory]
+
+UpdateSession --> ReturnResponse([Return Response to User])

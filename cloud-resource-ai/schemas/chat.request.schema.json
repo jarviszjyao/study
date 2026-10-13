@@ -1,0 +1,9 @@
+{
+  "type": "object",
+  "required": ["session_id", "message"],
+  "properties": {
+    "session_id": { "type": "string" },
+    "message": { "type": "string" },
+    "user_id": { "type": "string" }
+  }
+}

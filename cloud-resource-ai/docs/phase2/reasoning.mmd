@@ -1,0 +1,37 @@
+flowchart TD
+
+User[User Question]
+
+User --> NLParse[Natural Language Input]
+
+NLParse --> EntityDetect[Entity Detection]
+
+EntityDetect --> EntityResolver[Entity Resolver]
+
+EntityResolver --> ContextBuilder[Context Builder]
+
+ContextBuilder --> SemanticRetrieval[Semantic Retrieval<br>Vector Search]
+
+SemanticRetrieval --> Planner
+
+Planner[LLM Planner<br>NL → QuerySpec]
+
+Planner --> QuerySpec[Structured QuerySpec]
+
+QuerySpec --> Validator[QuerySpec Validator]
+
+Validator --> CostGuard[Query Cost Guardrail]
+
+CostGuard --> DatasetResolver[Dataset Resolver]
+
+DatasetResolver --> SQLBuilder[SQL Builder AST]
+
+SQLBuilder --> SQL[Deterministic SQL]
+
+SQL --> Database[(Database Execution)]
+
+Database --> Result[Query Result]
+
+Result --> Formatter[Response Formatter]
+
+Formatter --> Response[User Answer]

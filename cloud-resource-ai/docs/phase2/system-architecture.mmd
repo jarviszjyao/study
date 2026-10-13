@@ -1,0 +1,62 @@
+flowchart TD
+
+User[User Natural Language Query]
+
+User --> APIGW[API Gateway]
+
+APIGW --> Orchestrator[Query Orchestrator]
+
+Orchestrator --> DomainSelector[Domain Selector]
+
+DomainSelector --> DomainRegistry[Domain Registry]
+
+DomainRegistry --> CloudDomain[Cloud Resources Domain]
+DomainRegistry --> ApiDomain[API Inventory Domain]
+DomainRegistry --> ChangeDomain[Change Logs Domain]
+
+CloudDomain --> Catalog1[Dataset Catalog]
+ApiDomain --> Catalog2[Dataset Catalog]
+ChangeDomain --> Catalog3[Dataset Catalog]
+
+Catalog1 --> ContextBuilder
+Catalog2 --> ContextBuilder
+Catalog3 --> ContextBuilder
+
+ContextBuilder --> VectorSearch[Vector Search / Semantic Retrieval]
+
+VectorSearch --> EntityResolver[Entity Resolver]
+
+EntityResolver --> Planner
+
+Planner[LLM Planner NL → QuerySpec]
+
+Planner --> Validator[QuerySpec Validator]
+
+Validator --> CostGuard[Query Cost Guardrail]
+
+CostGuard --> Resolver[Dataset Resolver]
+
+Resolver --> SQLBuilder[SQL Builder AST]
+
+SQLBuilder --> CacheCheck{Query Cache}
+
+CacheCheck -->|Hit| Formatter
+CacheCheck -->|Miss| DBExec
+
+DBExec --> CloudDB[(Cloud Resource DB)]
+DBExec --> ApiDB[(API Inventory DB)]
+DBExec --> ChangeDB[(Change Logs DB)]
+
+CloudDB --> CacheStore[Cache Result]
+ApiDB --> CacheStore
+ChangeDB --> CacheStore
+
+CacheStore --> Formatter
+
+Formatter[Response Formatter]
+
+Formatter --> Response[User Response]
+
+Orchestrator --> Observability[Logs / Metrics / Audit]
+
+Observability --> Monitoring[(Monitoring System)]
